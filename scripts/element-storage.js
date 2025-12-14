@@ -114,3 +114,51 @@ export async function setNumberOfElements(actor, count) {
   const numberOfElements = Math.max(0, parseInt(count) || 0);
   await setFlag(actor, "numberOfElements", numberOfElements);
 }
+
+/**
+ * Retrieve element node assignments (features assigned to each node).
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @returns {Promise<Object>} Map of node index to feature data {itemId, img, name, uuid}.
+ */
+export async function getElementNodes(actor) {
+  return await getFlag(actor, "elementNodes", {});
+}
+
+/**
+ * Set element node assignment for a specific node index.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @param {number} nodeIndex - The index of the node (0-based).
+ * @param {Object} featureData - Feature data {itemId, img, name, uuid}.
+ * @returns {Promise<void>}
+ */
+export async function setElementNode(actor, nodeIndex, featureData) {
+  const nodes = await getElementNodes(actor);
+  nodes[nodeIndex] = featureData;
+  await setFlag(actor, "elementNodes", nodes);
+}
+
+/**
+ * Remove element node assignment for a specific node index.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @param {number} nodeIndex - The index of the node (0-based).
+ * @returns {Promise<void>}
+ */
+export async function removeElementNode(actor, nodeIndex) {
+  const nodes = await getElementNodes(actor);
+  delete nodes[nodeIndex];
+  await setFlag(actor, "elementNodes", nodes);
+}
+
+/**
+ * Set all element nodes at once.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @param {Object} nodes - Complete map of node assignments.
+ * @returns {Promise<void>}
+ */
+export async function setElementNodes(actor, nodes) {
+  await setFlag(actor, "elementNodes", nodes);
+}

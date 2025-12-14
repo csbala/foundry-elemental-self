@@ -4,7 +4,7 @@
 
 import { TAB_CONFIG } from "./constants.js";
 import { MODULE_NAME } from "./constants.js";
-import { getElementColor, setElementColor, getBurnLevel, setBurnLevel, getNumberOfElements, setNumberOfElements } from "./element-storage.js";
+import { getElementColor, setElementColor, getBurnLevel, setBurnLevel, getNumberOfElements, setNumberOfElements, getElementNodes, setElementNode, setElementNodes, removeElementNode } from "./element-storage.js";
 
 /**
  * Builds the tab button HTML
@@ -129,11 +129,39 @@ export async function setupElementInteractions(html, app) {
     return;
   }
 
+  // Set up hook to clean node assignments when items are deleted
+  const hookId = Hooks.on('deleteItem', async (item, options, userId) => {
+    // Only process if this is our actor's item
+    if (item.parent?.id === actor.id) {
+      console.log(`${MODULE_NAME} | Item ${item.name} deleted from actor, cleaning node assignments`);
+      
+      // Find which node had this item
+      const nodes = await getElementNodes(actor);
+      for (const [nodeIndex, nodeData] of Object.entries(nodes)) {
+        if (nodeData.itemId === item.id) {
+          console.log(`${MODULE_NAME} | Removing item ${item.name} from node ${nodeIndex}`);
+          await removeElementNode(actor, parseInt(nodeIndex));
+          
+          // Refresh the nodes display if this sheet is still open
+          if (app.rendered) {
+            const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+            await updateElementNodes(currentCount);
+          }
+          break;
+        }
+      }
+    }
+  });
+
+  // Store hook ID for cleanup
+  if (!app._elementNodeHooks) app._elementNodeHooks = [];
+  app._elementNodeHooks.push(hookId);
+
   /**
    * Update element nodes (small circles around the main circle)
    * @param {number} count - Number of element nodes to display
    */
-  function updateElementNodes(count) {
+  async function updateElementNodes(count) {
     const nodesContainer = html.find("#element-nodes-container");
     nodesContainer.empty();
 
@@ -143,6 +171,27 @@ export async function setupElementInteractions(html, app) {
 
     // Get the current element color
     const currentColor = colorPicker.val();
+
+    // Get saved node assignments and validate them
+    const nodeAssignments = await getElementNodes(actor);
+    let needsCleanup = false;
+    
+    // Validate that assigned items still exist on the actor
+    for (const [nodeIndex, nodeData] of Object.entries(nodeAssignments)) {
+      if (nodeData && nodeData.itemId) {
+        const item = actor.items.get(nodeData.itemId);
+        if (!item) {
+          console.log(`${MODULE_NAME} | Item ${nodeData.name} (${nodeData.itemId}) no longer exists, removing from node ${nodeIndex}`);
+          delete nodeAssignments[nodeIndex];
+          needsCleanup = true;
+        }
+      }
+    }
+    
+    // Save cleaned assignments if needed
+    if (needsCleanup) {
+      await setElementNodes(actor, nodeAssignments);
+    }
 
     // Calculate positions for each node
     for (let i = 0; i < count; i++) {
@@ -154,15 +203,22 @@ export async function setupElementInteractions(html, app) {
       const x = 50 + 52 * Math.cos(angle);
       const y = 50 + 52 * Math.sin(angle);
 
+      // Check if this node has a feature assigned
+      const assignedFeature = nodeAssignments[i];
+      const featureImg = assignedFeature ? `<img src="${assignedFeature.img}" class="element-node-feature" data-node-index="${i}" draggable="true" title="${assignedFeature.name}"/>` : '';
+
       // Create small circle element
       const node = $(`
-        <div class="element-node" style="
+        <div class="element-node" data-node-index="${i}" style="
           left: ${x}%;
           top: ${y}%;
           border-color: ${currentColor} !important;
           box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor} !important;
-        "></div>
+        ">${featureImg}</div>
       `);
+
+      // Add drag-and-drop event handlers
+      setupNodeDragDrop(node[0], i);
 
       nodesContainer.append(node);
     }
@@ -170,11 +226,168 @@ export async function setupElementInteractions(html, app) {
     console.log(`${MODULE_NAME} | Updated element nodes: ${count}`);
   }
 
+  /**
+   * Setup drag-and-drop handlers for an element node
+   * @param {HTMLElement} nodeElement - The node DOM element
+   * @param {number} nodeIndex - The index of this node
+   */
+  function setupNodeDragDrop(nodeElement, nodeIndex) {
+    // Allow drop
+    nodeElement.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      nodeElement.classList.add('drag-over');
+    });
+
+    nodeElement.addEventListener('dragenter', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      nodeElement.classList.add('drag-over');
+    });
+
+    nodeElement.addEventListener('dragleave', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      nodeElement.classList.remove('drag-over');
+    });
+
+    // Handle drop
+    nodeElement.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      nodeElement.classList.remove('drag-over');
+
+      try {
+        // Get the dropped data
+        const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+        
+        if (data.type === 'Item') {
+          // Get the item
+          const item = await fromUuid(data.uuid);
+          
+          if (!item) {
+            ui.notifications.warn("Could not find the dropped item");
+            return;
+          }
+
+          // Add item to actor if not already present - get the ACTOR's item ID
+          let actorItemId = null;
+          const existingItem = actor.items.find(i => i.name === item.name && i.type === item.type);
+          
+          if (existingItem) {
+            actorItemId = existingItem.id;
+            console.log(`${MODULE_NAME} | Feature ${item.name} already on actor, using existing ID ${actorItemId}`);
+          } else {
+            // Create returns array of created items
+            const createdItems = await actor.createEmbeddedDocuments('Item', [item.toObject()]);
+            actorItemId = createdItems[0].id;
+            console.log(`${MODULE_NAME} | Added feature ${item.name} to actor with ID ${actorItemId}`);
+          }
+
+          // Save feature assignment to this node with the ACTOR's item ID
+          await setElementNode(actor, nodeIndex, {
+            itemId: actorItemId, // Store the actor's item ID, not the source item ID
+            img: item.img,
+            name: item.name,
+            uuid: `Actor.${actor.id}.Item.${actorItemId}` // Create proper UUID for actor's item
+          });
+
+          console.log(`${MODULE_NAME} | Assigned feature ${item.name} to node ${nodeIndex}`);
+          ui.notifications.info(`Assigned ${item.name} to element node`);
+
+          // Refresh nodes
+          const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+          await updateElementNodes(currentCount);
+        }
+      } catch (error) {
+        console.error(`${MODULE_NAME} | Error handling drop:`, error);
+        ui.notifications.error("Failed to assign feature to node");
+      }
+    });
+
+    // Setup drag-out for feature images
+    const featureImg = nodeElement.querySelector('.element-node-feature');
+    if (featureImg) {
+      let dragStartPos = null;
+      
+      featureImg.addEventListener('dragstart', (event) => {
+        const nodeIdx = parseInt(featureImg.dataset.nodeIndex);
+        dragStartPos = { x: event.clientX, y: event.clientY };
+        
+        event.dataTransfer.setData('text/plain', JSON.stringify({
+          type: 'ElementNodeFeature',
+          nodeIndex: nodeIdx,
+          actorId: actor.id
+        }));
+        event.dataTransfer.effectAllowed = 'move';
+        
+        // Mark as being dragged
+        featureImg.classList.add('dragging');
+      });
+
+      featureImg.addEventListener('dragend', async (event) => {
+        featureImg.classList.remove('dragging');
+        
+        // Check if dragged outside the node (remove)
+        // Use screenX/screenY as clientX/Y might be 0
+        const x = event.clientX || event.screenX;
+        const y = event.clientY || event.screenY;
+        
+        // Only check if we have valid coordinates and they moved
+        if (x !== 0 && y !== 0 && dragStartPos) {
+          const rect = nodeElement.getBoundingClientRect();
+          const isOutside = x < rect.left || x > rect.right ||
+                           y < rect.top || y > rect.bottom;
+
+          if (isOutside) {
+            console.log(`${MODULE_NAME} | Dragged outside node ${nodeIndex}, removing feature`);
+            await removeFeatureFromNode(nodeIndex);
+          }
+        }
+        
+        dragStartPos = null;
+      });
+    }
+  }
+
+  /**
+   * Remove a feature from a node
+   * @param {number} nodeIndex - The node index
+   */
+  async function removeFeatureFromNode(nodeIndex) {
+    try {
+      // Get the feature data before removing
+      const nodes = await getElementNodes(actor);
+      const featureData = nodes[nodeIndex];
+
+      if (!featureData) return;
+
+      // Remove from actor's items
+      const item = actor.items.get(featureData.itemId);
+      if (item) {
+        await item.delete();
+        console.log(`${MODULE_NAME} | Removed feature ${featureData.name} from actor`);
+      }
+
+      // Remove node assignment
+      await removeElementNode(actor, nodeIndex);
+      
+      ui.notifications.info(`Removed ${featureData.name} from element node`);
+
+      // Refresh nodes
+      const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+      await updateElementNodes(currentCount);
+    } catch (error) {
+      console.error(`${MODULE_NAME} | Error removing feature:`, error);
+      ui.notifications.error("Failed to remove feature");
+    }
+  }
+
   // Number of Elements interactions
-  numberOfElementsInput.on("input", function () {
+  numberOfElementsInput.on("input", async function () {
     const count = parseInt($(this).val()) || 0;
     const validCount = Math.max(0, count);
-    updateElementNodes(validCount);
+    await updateElementNodes(validCount);
   });
 
   numberOfElementsInput.on("change", async function () {
@@ -183,7 +396,7 @@ export async function setupElementInteractions(html, app) {
 
     // Update input to valid value
     $(this).val(validCount);
-    updateElementNodes(validCount);
+    await updateElementNodes(validCount);
 
     try {
       await setNumberOfElements(actor, validCount);
@@ -238,13 +451,13 @@ export async function setupElementInteractions(html, app) {
   }
 
   // Color picker change event (with live preview and save on change)
-  colorPicker.on("input", function () {
+  colorPicker.on("input", async function () {
     const color = $(this).val();
     colorHex.val(color);
     updateCircleColor(color);
     // Update node colors in real-time
     const currentCount = parseInt(numberOfElementsInput.val()) || 0;
-    updateElementNodes(currentCount);
+    await updateElementNodes(currentCount);
   });
 
   colorPicker.on("change", async function () {
@@ -274,7 +487,7 @@ export async function setupElementInteractions(html, app) {
       updateCircleColor(color);
       // Update node colors when hex is manually changed
       const currentCount = parseInt(numberOfElementsInput.val()) || 0;
-      updateElementNodes(currentCount);
+      await updateElementNodes(currentCount);
 
       // Save to actor
       try {
@@ -305,7 +518,7 @@ export async function setupElementInteractions(html, app) {
   }
 
   // Now update element nodes with the loaded color and count
-  updateElementNodes(savedCount);
+  await updateElementNodes(savedCount);
 
   // Burn Level interactions
   const burnLevelInput = html.find("#element-burn-level");

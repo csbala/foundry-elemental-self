@@ -211,6 +211,28 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   transform: translate(-50%, -50%);
   transition: all 0.3s ease;
   animation: node-pulse 2s ease-in-out infinite;
+  pointer-events: all;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Drag over state for nodes */
+.element-node.drag-over {
+  transform: translate(-50%, -50%) scale(1.1);
+  filter: brightness(1.3);
+  animation: none;
+}
+
+/* Feature image inside node */
+.element-node-feature {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  cursor: move;
+  pointer-events: all;
 }
 
 /* Pulse animation for nodes */
