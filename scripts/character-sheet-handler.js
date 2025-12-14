@@ -3,7 +3,7 @@
  */
 
 import { MODULE_NAME, TAB_CONFIG } from "./constants.js";
-import { buildTabButton, buildTabContent, normalizeHtml } from "./tab-builder.js";
+import { buildTabButton, buildTabContent, normalizeHtml, setupElementInteractions } from "./tab-builder.js";
 
 // Store active watchers for each sheet
 const sheetWatchers = new Map();
@@ -110,6 +110,10 @@ export function addElementsTab(app, htmlInput) {
     content.append(tabContent);
     console.log(`${MODULE_NAME} | Tab content added`);
 
+    // Set up interactive elements (color picker, etc.)
+    setupElementInteractions(html);
+    console.log(`${MODULE_NAME} | Element interactions initialized`);
+
     // Manually set up click handler for our Elements tab (use .off to prevent duplicates)
     tabButton.off("click").on("click", function (event) {
       event.preventDefault();
@@ -127,25 +131,29 @@ export function addElementsTab(app, htmlInput) {
     });
 
     // Re-enable native tab clicks for OTHER tabs when Elements is active
-    html.find("nav.tabs a.item.control").not(tabButton).off("click.elemental").on("click.elemental", function (event) {
-      // Only intervene if Elements tab is currently active
-      if (tabButton.hasClass("active")) {
-        const targetTab = $(this).data("tab");
-        
-        // Deactivate Elements tab
-        tabButton.removeClass("active");
-        tabContent.removeClass("active");
-        
-        // Manually activate the target tab and its content
-        $(this).addClass("active");
-        html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
-        
-        // Force ability scores to show again (in case CSS timing is off)
-        html.find("section.ability-scores").css("display", "");
-        
-        console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
-      }
-    });
+    html
+      .find("nav.tabs a.item.control")
+      .not(tabButton)
+      .off("click.elemental")
+      .on("click.elemental", function (event) {
+        // Only intervene if Elements tab is currently active
+        if (tabButton.hasClass("active")) {
+          const targetTab = $(this).data("tab");
+
+          // Deactivate Elements tab
+          tabButton.removeClass("active");
+          tabContent.removeClass("active");
+
+          // Manually activate the target tab and its content
+          $(this).addClass("active");
+          html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
+
+          // Force ability scores to show again (in case CSS timing is off)
+          html.find("section.ability-scores").css("display", "");
+
+          console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
+        }
+      });
 
     // Set up continuous monitoring for tab removal
     const sheetId = app.id;
@@ -181,6 +189,9 @@ export function addElementsTab(app, htmlInput) {
           const newTabContent = $(buildTabContent());
           content.append(newTabContent);
 
+          // Re-initialize interactive elements
+          setupElementInteractions(html);
+
           // Re-attach click handler
           newTabButton.off("click").on("click", function (event) {
             event.preventDefault();
@@ -192,24 +203,28 @@ export function addElementsTab(app, htmlInput) {
           });
 
           // Re-attach handler for other tabs
-          html.find("nav.tabs a.item.control").not(newTabButton).off("click.elemental").on("click.elemental", function (event) {
-            if (newTabButton.hasClass("active")) {
-              const targetTab = $(this).data("tab");
-              
-              // Deactivate Elements tab
-              newTabButton.removeClass("active");
-              newTabContent.removeClass("active");
-              
-              // Manually activate the target tab and its content
-              $(this).addClass("active");
-              html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
-              
-              // Force ability scores to show again (in case CSS timing is off)
-              html.find("section.ability-scores").css("display", "");
-              
-              console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
-            }
-          });
+          html
+            .find("nav.tabs a.item.control")
+            .not(newTabButton)
+            .off("click.elemental")
+            .on("click.elemental", function (event) {
+              if (newTabButton.hasClass("active")) {
+                const targetTab = $(this).data("tab");
+
+                // Deactivate Elements tab
+                newTabButton.removeClass("active");
+                newTabContent.removeClass("active");
+
+                // Manually activate the target tab and its content
+                $(this).addClass("active");
+                html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
+
+                // Force ability scores to show again (in case CSS timing is off)
+                html.find("section.ability-scores").css("display", "");
+
+                console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
+              }
+            });
 
           console.log(`${MODULE_NAME} | Tab re-injected successfully`);
         }

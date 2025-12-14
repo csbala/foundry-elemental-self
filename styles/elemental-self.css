@@ -11,6 +11,7 @@ section.tab.elements.active {
   align-items: center;
   width: 100%;
   height: 100%;
+  padding: 20px;
 }
 
 /* Hide ability scores when Elements tab is active */
@@ -18,17 +19,98 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   display: none !important;
 }
 
-/* Element Circle Styles */
-.element-circle-container {
+/* Main container with left/right layout */
+.elements-container {
+  display: flex;
+  gap: 40px;
+  width: 100%;
+  max-width: 1000px;
+  align-items: center;
+}
+
+/* Left side - Controls */
+.elements-controls {
+  flex: 0 0 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.elements-controls .section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0f0e0;
+  margin: 0 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.elements-controls .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.elements-controls .form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #b5b3a4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-input-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.element-color-picker {
+  width: 60px;
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.element-color-picker:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.element-color-hex {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #f0f0e0;
+  font-family: monospace;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.element-color-hex:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+}
+
+/* Right side - Display */
+.elements-display {
+  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 20px 0;
+  min-height: 300px;
 }
 
+/* Element Circle Styles */
 .element-circle {
-  width: 150px;
-  height: 150px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   display: flex;
   justify-content: center;
@@ -36,19 +118,17 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
   position: relative;
   border: 3px solid rgba(255, 255, 255, 0.2);
-}
-
-.element-circle.blue {
+  transition: all 0.3s ease;
   background: linear-gradient(135deg, #4a90e2 0%, #1e5a9e 100%);
-  box-shadow: 0 0 30px rgba(74, 144, 226, 0.6);
 }
 
 .element-circle-inner {
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent);
   border: 2px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
 }
 
 .elemental-self-container h2 {
