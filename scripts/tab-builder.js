@@ -4,7 +4,7 @@
 
 import { TAB_CONFIG } from "./constants.js";
 import { MODULE_NAME } from "./constants.js";
-import { getElementColor, setElementColor, getBurnLevel, setBurnLevel } from "./element-storage.js";
+import { getElementColor, setElementColor, getBurnLevel, setBurnLevel, getNumberOfElements, setNumberOfElements } from "./element-storage.js";
 
 /**
  * Builds the tab button HTML
@@ -31,6 +31,18 @@ export function buildTabContent() {
         <div class="elements-controls">
           <h3 class="section-title">Elements</h3>
           
+          <div class="form-group">
+            <label for="element-number">Number of Elements</label>
+            <input type="number" 
+                   id="element-number" 
+                   class="element-number"
+                   value="0"
+                   min="0"
+                   step="1"
+                   data-tooltip="Number of Elements"
+                   aria-label="Number of Elements">
+          </div>
+
           <div class="form-group">
             <label for="element-color-picker">Element Color</label>
             <div class="color-input-group">
@@ -106,11 +118,38 @@ export async function setupElementInteractions(html, app) {
   const colorPicker = html.find("#element-color-picker");
   const colorHex = html.find("#element-color-hex");
   const elementCircle = html.find(".element-circle");
+  const numberOfElementsInput = html.find("#element-number");
   const actor = app.actor;
 
   if (!actor) {
     console.error(`${MODULE_NAME} | No actor found for element interactions`);
     return;
+  }
+
+  // Number of Elements interactions
+  numberOfElementsInput.on("change", async function () {
+    const count = parseInt($(this).val()) || 0;
+    const validCount = Math.max(0, count);
+    
+    // Update input to valid value
+    $(this).val(validCount);
+
+    try {
+      await setNumberOfElements(actor, validCount);
+      console.log(`${MODULE_NAME} | Saved number of elements ${validCount} to actor ${actor.name}`);
+    } catch (error) {
+      console.error(`${MODULE_NAME} | Failed to save number of elements:`, error);
+      ui.notifications.error("Failed to save number of elements");
+    }
+  });
+
+  // Load saved number of elements
+  try {
+    const savedCount = await getNumberOfElements(actor);
+    numberOfElementsInput.val(savedCount);
+    console.log(`${MODULE_NAME} | Loaded number of elements ${savedCount} from actor ${actor.name}`);
+  } catch (error) {
+    console.error(`${MODULE_NAME} | Failed to load number of elements:`, error);
   }
 
   /**
@@ -225,56 +264,56 @@ export async function setupElementInteractions(html, app) {
         color: "#22c55e",
         borderColor: "rgba(34, 197, 94, 0.6)",
         text: "All clear! Good job!",
-        bgTint: "rgba(34, 197, 94, 0.15)"
+        bgTint: "rgba(34, 197, 94, 0.15)",
       };
     } else if (level <= 20) {
       return {
         color: "#eab308",
         borderColor: "rgba(234, 179, 8, 0.6)",
         text: "Average burn level",
-        bgTint: "rgba(234, 179, 8, 0.15)"
+        bgTint: "rgba(234, 179, 8, 0.15)",
       };
     } else if (level <= 35) {
       return {
         color: "#f59e0b",
         borderColor: "rgba(245, 158, 11, 0.6)",
         text: "Higher than average burn level - Try to get medication",
-        bgTint: "rgba(245, 158, 11, 0.15)"
+        bgTint: "rgba(245, 158, 11, 0.15)",
       };
     } else if (level <= 50) {
       return {
         color: "#f97316",
         borderColor: "rgba(249, 115, 22, 0.6)",
         text: "Nausea and headaches! Your burn level is too high",
-        bgTint: "rgba(249, 115, 22, 0.15)"
+        bgTint: "rgba(249, 115, 22, 0.15)",
       };
     } else if (level <= 60) {
       return {
         color: "#dc2626",
         borderColor: "rgba(220, 38, 38, 0.6)",
         text: "Unhealthy burn: health complications",
-        bgTint: "rgba(220, 38, 38, 0.15)"
+        bgTint: "rgba(220, 38, 38, 0.15)",
       };
     } else if (level <= 70) {
       return {
         color: "#ef4444",
         borderColor: "rgba(239, 68, 68, 0.6)",
         text: "Unusual burn activity: demonic whispers",
-        bgTint: "rgba(239, 68, 68, 0.15)"
+        bgTint: "rgba(239, 68, 68, 0.15)",
       };
     } else if (level <= 80) {
       return {
         color: "#991b1b",
         borderColor: "rgba(153, 27, 27, 0.8)",
         text: "COMPROMISED - Seek medical help immediately",
-        bgTint: "rgba(153, 27, 27, 0.2)"
+        bgTint: "rgba(153, 27, 27, 0.2)",
       };
     } else if (level < 100) {
       return {
         color: "#450a0a",
         borderColor: "rgba(69, 10, 10, 1)",
         text: "EXTREME DANGER - Critical burn levels!",
-        bgTint: "rgba(69, 10, 10, 0.3)"
+        bgTint: "rgba(69, 10, 10, 0.3)",
       };
     } else {
       // Level 100 - Special mysterious message
@@ -282,7 +321,7 @@ export async function setupElementInteractions(html, app) {
         color: "#ffffff",
         borderColor: "rgba(255, 255, 255, 0.9)",
         text: "Deus misereatur... Pray for your soul",
-        bgTint: "rgba(255, 255, 255, 0.1)"
+        bgTint: "rgba(255, 255, 255, 0.1)",
       };
     }
   }
@@ -293,16 +332,16 @@ export async function setupElementInteractions(html, app) {
    */
   function updateBurnLevelVisuals(level) {
     const state = getBurnLevelState(level);
-    
+
     burnLevelInput.css({
       "border-color": state.borderColor,
       "box-shadow": `0 0 10px ${state.borderColor}`,
-      "background": `linear-gradient(to bottom, ${state.bgTint}, rgba(0, 0, 0, 0.3))`
+      background: `linear-gradient(to bottom, ${state.bgTint}, rgba(0, 0, 0, 0.3))`,
     });
 
     burnLevelStatus.css({
-      "color": state.color,
-      "text-shadow": `0 0 8px ${state.borderColor}`
+      color: state.color,
+      "text-shadow": `0 0 8px ${state.borderColor}`,
     });
 
     burnLevelStatus.text(state.text);
@@ -319,7 +358,7 @@ export async function setupElementInteractions(html, app) {
   burnLevelInput.on("change", async function () {
     const level = parseInt($(this).val()) || 0;
     const clampedLevel = Math.max(0, Math.min(100, level));
-    
+
     // Update input to clamped value
     $(this).val(clampedLevel);
     updateBurnLevelVisuals(clampedLevel);

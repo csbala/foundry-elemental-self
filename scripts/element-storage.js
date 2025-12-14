@@ -11,6 +11,7 @@ const STORAGE_CONFIG = {
   defaults: {
     elementColor: "#4a90e2",
     burnLevel: 0,
+    numberOfElements: 0,
   },
 };
 
@@ -90,4 +91,26 @@ export async function getBurnLevel(actor) {
 export async function setBurnLevel(actor, level) {
   const burnLevel = Math.max(0, Math.min(100, parseInt(level) || 0));
   await setFlag(actor, "burnLevel", burnLevel);
+}
+
+/**
+ * Retrieve the number of elements for a specific actor.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @returns {Promise<number>} The number of elements.
+ */
+export async function getNumberOfElements(actor) {
+  return await getFlag(actor, "numberOfElements", STORAGE_CONFIG.defaults.numberOfElements);
+}
+
+/**
+ * Set or update the number of elements for a specific actor.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @param {number} count - The number of elements.
+ * @returns {Promise<void>}
+ */
+export async function setNumberOfElements(actor, count) {
+  const numberOfElements = Math.max(0, parseInt(count) || 0);
+  await setFlag(actor, "numberOfElements", numberOfElements);
 }
