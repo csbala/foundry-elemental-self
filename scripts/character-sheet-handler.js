@@ -5,8 +5,8 @@
 import { MODULE_NAME, TAB_CONFIG } from "./constants.js";
 import { buildTabButton, buildTabContent, normalizeHtml, setupElementInteractions } from "./tab-builder.js";
 
-// Store active watchers for each sheet
-const sheetWatchers = new Map();
+// Store active tab per sheet ID to preserve state across re-renders
+const activeTabTracker = new Map();
 
 /**
  * Check if the Elements tab already exists in the sheet
@@ -78,11 +78,14 @@ export async function addElementsTab(app, htmlInput) {
     const html = normalizeHtml(htmlInput, app);
     console.log(`${MODULE_NAME} | HTML normalized, length: ${html.length}`);
 
-    // Check if tab already exists
-    if (tabAlreadyExists(html)) {
-      console.log(`${MODULE_NAME} | Tab already exists, skipping`);
-      return;
-    }
+    // Get the previously active tab from our tracker (don't default to anything)
+    const sheetId = app.id;
+    const previousActiveTab = activeTabTracker.get(sheetId);
+    console.log(`${MODULE_NAME} | Previous active tab from tracker: ${previousActiveTab || "none"}`);
+
+    // Remove any existing Elements tab to avoid duplicates
+    html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`).remove();
+    html.find(`section.tab[data-tab="${TAB_CONFIG.ID}"]`).remove();
 
     // Find tabs navigation
     const tabsNav = findTabsNavigation(html);
@@ -100,12 +103,11 @@ export async function addElementsTab(app, htmlInput) {
     }
     console.log(`${MODULE_NAME} | Found content container`);
 
-    // Add tab button to navigation
+    // ALWAYS inject tab button and content (on every render)
     const tabButton = $(buildTabButton());
     tabsNav.append(tabButton);
     console.log(`${MODULE_NAME} | Tab button added`);
 
-    // Add tab content to body
     const tabContent = $(buildTabContent());
     content.append(tabContent);
     console.log(`${MODULE_NAME} | Tab content added`);
@@ -114,126 +116,61 @@ export async function addElementsTab(app, htmlInput) {
     await setupElementInteractions(html, app);
     console.log(`${MODULE_NAME} | Element interactions initialized`);
 
-    // Manually set up click handler for our Elements tab (use .off to prevent duplicates)
-    tabButton.off("click").on("click", function (event) {
-      event.preventDefault();
-      event.stopPropagation();
+    // Restore active state IMMEDIATELY if we have a tracked tab
+    if (previousActiveTab) {
+      // Remove active from all
+      html.find('nav.tabs a[data-action="tab"]').removeClass("active");
+      html.find('section.tab[data-group="primary"]').removeClass("active");
 
-      // Remove active from all tabs and tab buttons
-      html.find("nav.tabs .item.control").removeClass("active");
-      html.find("section.tab").removeClass("active");
-
-      // Add active to our tab and content
-      tabButton.addClass("active");
-      tabContent.addClass("active");
-
-      console.log(`${MODULE_NAME} | Elements tab activated`);
-    });
-
-    // Re-enable native tab clicks for OTHER tabs when Elements is active
-    html
-      .find("nav.tabs a.item.control")
-      .not(tabButton)
-      .off("click.elemental")
-      .on("click.elemental", function (event) {
-        // Only intervene if Elements tab is currently active
-        if (tabButton.hasClass("active")) {
-          const targetTab = $(this).data("tab");
-
-          // Deactivate Elements tab
-          tabButton.removeClass("active");
-          tabContent.removeClass("active");
-
-          // Manually activate the target tab and its content
-          $(this).addClass("active");
-          html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
-
-          // Force ability scores to show again (in case CSS timing is off)
-          html.find("section.ability-scores").css("display", "");
-
-          console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
-        }
-      });
-
-    // Set up continuous monitoring for tab removal
-    const sheetId = app.id;
-
-    // Clear any existing watcher for this sheet
-    if (sheetWatchers.has(sheetId)) {
-      clearInterval(sheetWatchers.get(sheetId));
+      // Add active to the previously active tab
+      html.find(`nav.tabs a[data-tab="${previousActiveTab}"]`).addClass("active");
+      html.find(`section.tab[data-tab="${previousActiveTab}"]`).addClass("active");
+      
+      console.log(`${MODULE_NAME} | Pre-restored active tab: ${previousActiveTab}`);
     }
 
-    // Start a new watcher that checks every 500ms if tab still exists
-    const watcherId = setInterval(async () => {
-      const currentButton = html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`);
-      const currentContent = html.find(`section.tab[data-tab="${TAB_CONFIG.ID}"]`);
+    // Track clicks on ALL tabs to know which one user selected
+    html.find('nav.tabs a[data-action="tab"]').on("click", function () {
+      const clickedTab = $(this).data("tab");
+      activeTabTracker.set(sheetId, clickedTab);
+      console.log(`${MODULE_NAME} | User clicked tab: ${clickedTab}`);
+    });
 
-      // If either tab button or content is missing, re-inject
-      if (currentButton.length === 0 || currentContent.length === 0) {
-        console.log(`${MODULE_NAME} | Tab disappeared, re-injecting...`);
-
-        // Find tabs navigation and content container again
-        const tabsNav = findTabsNavigation(html);
-        const content = findContentContainer(html);
-
-        if (tabsNav && content) {
-          // Remove any remnants first
-          html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`).remove();
-          html.find(`section.tab[data-tab="${TAB_CONFIG.ID}"]`).remove();
-
-          // Re-add tab button
-          const newTabButton = $(buildTabButton());
-          tabsNav.append(newTabButton);
-
-          // Re-add tab content
-          const newTabContent = $(buildTabContent());
-          content.append(newTabContent);
-
-          // Re-initialize interactive elements
-          await setupElementInteractions(html, app);
-
-          // Re-attach click handler
-          newTabButton.off("click").on("click", function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            html.find("nav.tabs .item.control").removeClass("active");
-            html.find("section.tab").removeClass("active");
-            newTabButton.addClass("active");
-            newTabContent.addClass("active");
-          });
-
-          // Re-attach handler for other tabs
-          html
-            .find("nav.tabs a.item.control")
-            .not(newTabButton)
-            .off("click.elemental")
-            .on("click.elemental", function (event) {
-              if (newTabButton.hasClass("active")) {
-                const targetTab = $(this).data("tab");
-
-                // Deactivate Elements tab
-                newTabButton.removeClass("active");
-                newTabContent.removeClass("active");
-
-                // Manually activate the target tab and its content
-                $(this).addClass("active");
-                html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
-
-                // Force ability scores to show again (in case CSS timing is off)
-                html.find("section.ability-scores").css("display", "");
-
-                console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
-              }
-            });
-
-          console.log(`${MODULE_NAME} | Tab re-injected successfully`);
+    // Re-bind tabs to include our new tab
+    if (app._tabs && app._tabs.length > 0) {
+      const primaryTabs = app._tabs.find((t) => t.group === "primary");
+      if (primaryTabs) {
+        primaryTabs.bind(html[0] || html);
+        console.log(`${MODULE_NAME} | Tabs re-bound to include Elements tab`);
+        
+        // Re-activate after bind to prevent Foundry from resetting
+        if (previousActiveTab) {
+          primaryTabs.activate(previousActiveTab);
+          console.log(`${MODULE_NAME} | Re-activated tab via Foundry: ${previousActiveTab}`);
         }
+      } else {
+        console.warn(`${MODULE_NAME} | Primary tabs not found in app._tabs`);
       }
-    }, 500);
-
-    // Store the watcher ID
-    sheetWatchers.set(sheetId, watcherId);
-    console.log(`${MODULE_NAME} | Tab watcher started for sheet ${sheetId}`);
+    } else {
+      console.warn(`${MODULE_NAME} | app._tabs not available - setting up manual fallback`);
+      
+      // Fallback: Add manual click handler for Elements tab if Foundry's system isn't ready
+      html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`).on("click", function(e) {
+        e.preventDefault();
+        
+        // Remove active from all tabs
+        html.find('nav.tabs a[data-action="tab"]').removeClass("active");
+        html.find('section.tab[data-group="primary"]').removeClass("active");
+        
+        // Add active to Elements tab
+        $(this).addClass("active");
+        html.find(`section.tab[data-tab="${TAB_CONFIG.ID}"]`).addClass("active");
+        
+        // Track the change
+        activeTabTracker.set(sheetId, TAB_CONFIG.ID);
+        console.log(`${MODULE_NAME} | Elements tab activated via fallback handler`);
+      });
+    }
 
     console.log(`${MODULE_NAME} | Tab injection complete`);
   } catch (error) {
@@ -280,14 +217,10 @@ export function registerCharacterSheetHooks() {
     }
   });
 
-  // Clean up watchers when sheet is closed
+  // Clean up tab tracker when sheet closes
   Hooks.on("closeCharacterActorSheet", (app) => {
-    const sheetId = app.id;
-    if (sheetWatchers.has(sheetId)) {
-      clearInterval(sheetWatchers.get(sheetId));
-      sheetWatchers.delete(sheetId);
-      console.log(`${MODULE_NAME} | Cleaned up watcher for sheet ${sheetId}`);
-    }
+    activeTabTracker.delete(app.id);
+    console.log(`${MODULE_NAME} | Character sheet ${app.id} closed, tracker cleaned`);
   });
 
   console.log(`${MODULE_NAME} | Character sheet hooks registered`);
