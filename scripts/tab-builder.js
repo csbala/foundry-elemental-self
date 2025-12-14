@@ -130,18 +130,18 @@ export async function setupElementInteractions(html, app) {
   }
 
   // Set up hook to clean node assignments when items are deleted
-  const hookId = Hooks.on('deleteItem', async (item, options, userId) => {
+  const hookId = Hooks.on("deleteItem", async (item, options, userId) => {
     // Only process if this is our actor's item
     if (item.parent?.id === actor.id) {
       console.log(`${MODULE_NAME} | Item ${item.name} deleted from actor, cleaning node assignments`);
-      
+
       // Find which node had this item
       const nodes = await getElementNodes(actor);
       for (const [nodeIndex, nodeData] of Object.entries(nodes)) {
         if (nodeData.itemId === item.id) {
           console.log(`${MODULE_NAME} | Removing item ${item.name} from node ${nodeIndex}`);
           await removeElementNode(actor, parseInt(nodeIndex));
-          
+
           // Refresh the nodes display if this sheet is still open
           if (app.rendered) {
             const currentCount = parseInt(numberOfElementsInput.val()) || 0;
@@ -175,7 +175,7 @@ export async function setupElementInteractions(html, app) {
     // Get saved node assignments and validate them
     const nodeAssignments = await getElementNodes(actor);
     let needsCleanup = false;
-    
+
     // Validate that assigned items still exist on the actor
     for (const [nodeIndex, nodeData] of Object.entries(nodeAssignments)) {
       if (nodeData && nodeData.itemId) {
@@ -187,7 +187,7 @@ export async function setupElementInteractions(html, app) {
         }
       }
     }
-    
+
     // Save cleaned assignments if needed
     if (needsCleanup) {
       await setElementNodes(actor, nodeAssignments);
@@ -205,7 +205,7 @@ export async function setupElementInteractions(html, app) {
 
       // Check if this node has a feature assigned
       const assignedFeature = nodeAssignments[i];
-      const featureImg = assignedFeature ? `<img src="${assignedFeature.img}" class="element-node-feature" data-node-index="${i}" draggable="true" title="${assignedFeature.name}"/>` : '';
+      const featureImg = assignedFeature ? `<img src="${assignedFeature.img}" class="element-node-feature" data-node-index="${i}" draggable="true" title="${assignedFeature.name}"/>` : "";
 
       // Create small circle element
       const node = $(`
@@ -233,38 +233,38 @@ export async function setupElementInteractions(html, app) {
    */
   function setupNodeDragDrop(nodeElement, nodeIndex) {
     // Allow drop
-    nodeElement.addEventListener('dragover', (event) => {
+    nodeElement.addEventListener("dragover", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      nodeElement.classList.add('drag-over');
+      nodeElement.classList.add("drag-over");
     });
 
-    nodeElement.addEventListener('dragenter', (event) => {
+    nodeElement.addEventListener("dragenter", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      nodeElement.classList.add('drag-over');
+      nodeElement.classList.add("drag-over");
     });
 
-    nodeElement.addEventListener('dragleave', (event) => {
+    nodeElement.addEventListener("dragleave", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      nodeElement.classList.remove('drag-over');
+      nodeElement.classList.remove("drag-over");
     });
 
     // Handle drop
-    nodeElement.addEventListener('drop', async (event) => {
+    nodeElement.addEventListener("drop", async (event) => {
       event.preventDefault();
       event.stopPropagation();
-      nodeElement.classList.remove('drag-over');
+      nodeElement.classList.remove("drag-over");
 
       try {
         // Get the dropped data
-        const data = JSON.parse(event.dataTransfer.getData('text/plain'));
-        
-        if (data.type === 'Item') {
+        const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+
+        if (data.type === "Item") {
           // Get the item
           const item = await fromUuid(data.uuid);
-          
+
           if (!item) {
             ui.notifications.warn("Could not find the dropped item");
             return;
@@ -272,14 +272,14 @@ export async function setupElementInteractions(html, app) {
 
           // Add item to actor if not already present - get the ACTOR's item ID
           let actorItemId = null;
-          const existingItem = actor.items.find(i => i.name === item.name && i.type === item.type);
-          
+          const existingItem = actor.items.find((i) => i.name === item.name && i.type === item.type);
+
           if (existingItem) {
             actorItemId = existingItem.id;
             console.log(`${MODULE_NAME} | Feature ${item.name} already on actor, using existing ID ${actorItemId}`);
           } else {
             // Create returns array of created items
-            const createdItems = await actor.createEmbeddedDocuments('Item', [item.toObject()]);
+            const createdItems = await actor.createEmbeddedDocuments("Item", [item.toObject()]);
             actorItemId = createdItems[0].id;
             console.log(`${MODULE_NAME} | Added feature ${item.name} to actor with ID ${actorItemId}`);
           }
@@ -289,7 +289,7 @@ export async function setupElementInteractions(html, app) {
             itemId: actorItemId, // Store the actor's item ID, not the source item ID
             img: item.img,
             name: item.name,
-            uuid: `Actor.${actor.id}.Item.${actorItemId}` // Create proper UUID for actor's item
+            uuid: `Actor.${actor.id}.Item.${actorItemId}`, // Create proper UUID for actor's item
           });
 
           console.log(`${MODULE_NAME} | Assigned feature ${item.name} to node ${nodeIndex}`);
@@ -306,45 +306,47 @@ export async function setupElementInteractions(html, app) {
     });
 
     // Setup drag-out for feature images
-    const featureImg = nodeElement.querySelector('.element-node-feature');
+    const featureImg = nodeElement.querySelector(".element-node-feature");
     if (featureImg) {
       let dragStartPos = null;
-      
-      featureImg.addEventListener('dragstart', (event) => {
+
+      featureImg.addEventListener("dragstart", (event) => {
         const nodeIdx = parseInt(featureImg.dataset.nodeIndex);
         dragStartPos = { x: event.clientX, y: event.clientY };
-        
-        event.dataTransfer.setData('text/plain', JSON.stringify({
-          type: 'ElementNodeFeature',
-          nodeIndex: nodeIdx,
-          actorId: actor.id
-        }));
-        event.dataTransfer.effectAllowed = 'move';
-        
+
+        event.dataTransfer.setData(
+          "text/plain",
+          JSON.stringify({
+            type: "ElementNodeFeature",
+            nodeIndex: nodeIdx,
+            actorId: actor.id,
+          })
+        );
+        event.dataTransfer.effectAllowed = "move";
+
         // Mark as being dragged
-        featureImg.classList.add('dragging');
+        featureImg.classList.add("dragging");
       });
 
-      featureImg.addEventListener('dragend', async (event) => {
-        featureImg.classList.remove('dragging');
-        
+      featureImg.addEventListener("dragend", async (event) => {
+        featureImg.classList.remove("dragging");
+
         // Check if dragged outside the node (remove)
         // Use screenX/screenY as clientX/Y might be 0
         const x = event.clientX || event.screenX;
         const y = event.clientY || event.screenY;
-        
+
         // Only check if we have valid coordinates and they moved
         if (x !== 0 && y !== 0 && dragStartPos) {
           const rect = nodeElement.getBoundingClientRect();
-          const isOutside = x < rect.left || x > rect.right ||
-                           y < rect.top || y > rect.bottom;
+          const isOutside = x < rect.left || x > rect.right || y < rect.top || y > rect.bottom;
 
           if (isOutside) {
             console.log(`${MODULE_NAME} | Dragged outside node ${nodeIndex}, removing feature`);
             await removeFeatureFromNode(nodeIndex);
           }
         }
-        
+
         dragStartPos = null;
       });
     }
@@ -371,7 +373,7 @@ export async function setupElementInteractions(html, app) {
 
       // Remove node assignment
       await removeElementNode(actor, nodeIndex);
-      
+
       ui.notifications.info(`Removed ${featureData.name} from element node`);
 
       // Refresh nodes
