@@ -13,6 +13,11 @@ section.tab.elements.active {
   height: 100%;
 }
 
+/* Hide ability scores when Elements tab is active */
+form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
+  display: none !important;
+}
+
 /* Element Circle Styles */
 .element-circle-container {
   display: flex;
