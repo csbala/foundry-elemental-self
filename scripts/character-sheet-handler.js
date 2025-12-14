@@ -68,7 +68,7 @@ function findContentContainer(html) {
  * @param {Object} app - Application instance
  * @param {*} htmlInput - HTML element in various formats
  */
-export function addElementsTab(app, htmlInput) {
+export async function addElementsTab(app, htmlInput) {
   try {
     console.log(`${MODULE_NAME} | addElementsTab called`);
     console.log(`${MODULE_NAME} | Sheet mode: ${app?.options?.editable ? "EDITABLE" : "VIEW ONLY"}`);
@@ -111,7 +111,7 @@ export function addElementsTab(app, htmlInput) {
     console.log(`${MODULE_NAME} | Tab content added`);
 
     // Set up interactive elements (color picker, etc.)
-    setupElementInteractions(html);
+    await setupElementInteractions(html, app);
     console.log(`${MODULE_NAME} | Element interactions initialized`);
 
     // Manually set up click handler for our Elements tab (use .off to prevent duplicates)
@@ -164,7 +164,7 @@ export function addElementsTab(app, htmlInput) {
     }
 
     // Start a new watcher that checks every 500ms if tab still exists
-    const watcherId = setInterval(() => {
+    const watcherId = setInterval(async () => {
       const currentButton = html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`);
       const currentContent = html.find(`section.tab[data-tab="${TAB_CONFIG.ID}"]`);
 
@@ -190,7 +190,7 @@ export function addElementsTab(app, htmlInput) {
           content.append(newTabContent);
 
           // Re-initialize interactive elements
-          setupElementInteractions(html);
+          await setupElementInteractions(html, app);
 
           // Re-attach click handler
           newTabButton.off("click").on("click", function (event) {

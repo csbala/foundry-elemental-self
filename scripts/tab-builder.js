@@ -4,6 +4,7 @@
 
 import { TAB_CONFIG } from "./constants.js";
 import { MODULE_NAME } from "./constants.js";
+import { getElementColor, setElementColor } from "./element-storage.js";
 
 /**
  * Builds the tab button HTML
@@ -83,11 +84,18 @@ export function normalizeHtml(htmlInput, app) {
 /**
  * Sets up event listeners for interactive elements
  * @param {jQuery} html - jQuery wrapped HTML element
+ * @param {Object} app - Application instance with actor reference
  */
-export function setupElementInteractions(html) {
+export async function setupElementInteractions(html, app) {
   const colorPicker = html.find("#element-color-picker");
   const colorHex = html.find("#element-color-hex");
   const elementCircle = html.find(".element-circle");
+  const actor = app.actor;
+
+  if (!actor) {
+    console.error(`${MODULE_NAME} | No actor found for element interactions`);
+    return;
+  }
 
   /**
    * Updates the circle color with gradient
@@ -125,15 +133,26 @@ export function setupElementInteractions(html) {
     console.log(`${MODULE_NAME} | Circle color updated to ${hexColor}`);
   }
 
-  // Color picker change event
-  colorPicker.on("input change", function () {
+  // Color picker change event (with live preview and save on change)
+  colorPicker.on("input", function () {
     const color = $(this).val();
     colorHex.val(color);
     updateCircleColor(color);
   });
 
-  // Hex input change event
-  colorHex.on("change", function () {
+  colorPicker.on("change", async function () {
+    const color = $(this).val();
+    try {
+      await setElementColor(actor, color);
+      console.log(`${MODULE_NAME} | Saved color ${color} to actor ${actor.name}`);
+    } catch (error) {
+      console.error(`${MODULE_NAME} | Failed to save color:`, error);
+      ui.notifications.error("Failed to save element color");
+    }
+  });
+
+  // Hex input change event (save when user finishes editing)
+  colorHex.on("change", async function () {
     let color = $(this).val().trim();
 
     // Add # if missing
@@ -146,6 +165,15 @@ export function setupElementInteractions(html) {
       colorPicker.val(color);
       $(this).val(color);
       updateCircleColor(color);
+
+      // Save to actor
+      try {
+        await setElementColor(actor, color);
+        console.log(`${MODULE_NAME} | Saved color ${color} to actor ${actor.name}`);
+      } catch (error) {
+        console.error(`${MODULE_NAME} | Failed to save color:`, error);
+        ui.notifications.error("Failed to save element color");
+      }
     } else {
       // Reset to picker value if invalid
       $(this).val(colorPicker.val());
@@ -153,6 +181,16 @@ export function setupElementInteractions(html) {
     }
   });
 
-  // Initialize with default color
-  updateCircleColor(colorPicker.val());
+  // Load saved color from actor and initialize
+  try {
+    const savedColor = await getElementColor(actor);
+    colorPicker.val(savedColor);
+    colorHex.val(savedColor);
+    updateCircleColor(savedColor);
+    console.log(`${MODULE_NAME} | Loaded color ${savedColor} from actor ${actor.name}`);
+  } catch (error) {
+    console.error(`${MODULE_NAME} | Failed to load saved color:`, error);
+    // Fall back to default
+    updateCircleColor(colorPicker.val());
+  }
 }
