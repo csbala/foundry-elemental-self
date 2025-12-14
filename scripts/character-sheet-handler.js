@@ -123,29 +123,22 @@ export async function addElementsTab(app, htmlInput) {
       console.log(`${MODULE_NAME} | User clicked tab: ${clickedTab}`);
     });
 
-    // Re-bind tabs to include our new tab - try multiple times if needed
+    // Try to bind with Foundry's tab system if available (optional - manual restoration works regardless)
     const tryBindTabs = () => {
       if (app._tabs && app._tabs.length > 0) {
         const primaryTabs = app._tabs.find((t) => t.group === "primary");
         if (primaryTabs) {
           primaryTabs.bind(html[0] || html);
-          console.log(`${MODULE_NAME} | Tabs re-bound to include Elements tab`);
+          console.log(`${MODULE_NAME} | Tabs re-bound with Foundry's system`);
           return true;
-        } else {
-          console.warn(`${MODULE_NAME} | Primary tabs not found in app._tabs`);
         }
       }
       return false;
     };
 
-    // Try immediately
+    // Try to bind, but don't worry if it fails - manual restoration handles everything
     if (!tryBindTabs()) {
-      // If not available, try again after a delay
-      setTimeout(() => {
-        if (!tryBindTabs()) {
-          console.warn(`${MODULE_NAME} | app._tabs still not available after delay`);
-        }
-      }, 50);
+      setTimeout(() => tryBindTabs(), 50);
     }
 
     // ALWAYS restore the active tab manually (don't rely on Foundry's system)
@@ -157,7 +150,7 @@ export async function addElementsTab(app, htmlInput) {
       // Add active to the previously active tab
       const activeButton = html.find(`nav.tabs a[data-tab="${previousActiveTab}"]`);
       const activeContent = html.find(`section.tab[data-tab="${previousActiveTab}"]`);
-      
+
       if (activeButton.length > 0 && activeContent.length > 0) {
         activeButton.addClass("active");
         activeContent.addClass("active");
