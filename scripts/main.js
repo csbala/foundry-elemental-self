@@ -3,10 +3,15 @@
  * Main entry point
  */
 
-Hooks.once("init", async function () {
-  console.log("Elemental Self | Initializing module");
-});
+import { MODULE_NAME } from "./constants.js";
+import { registerCharacterSheetHooks } from "./character-sheet-handler.js";
 
-Hooks.once("ready", async function () {
-  console.log("Elemental Self | Module ready");
+/**
+ * Initialize the module
+ */
+Hooks.once("init", async function () {
+  console.log(`${MODULE_NAME} | Initializing`);
+
+  // Register character sheet hooks
+  registerCharacterSheetHooks();
 });

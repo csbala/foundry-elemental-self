@@ -3,3 +3,56 @@
 .elemental-self-tab {
   padding: 10px;
 }
+
+.elemental-self-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Element Circle Styles */
+.element-circle-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.element-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.element-circle.blue {
+  background: linear-gradient(135deg, #4a90e2 0%, #1e5a9e 100%);
+  box-shadow: 0 0 30px rgba(74, 144, 226, 0.6);
+}
+
+.element-circle-inner {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.elemental-self-container h2 {
+  color: #fff;
+  text-align: center;
+  margin: 10px 0;
+  font-size: 24px;
+}
+
+.elemental-self-container p {
+  color: #ccc;
+  text-align: center;
+}
