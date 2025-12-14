@@ -1,15 +1,12 @@
 /* Elemental Self Styles */
 
-.elemental-self-tab {
-  padding: 10px;
-}
-
-.elemental-self-container {
-  padding: 20px;
+/* Center content in the Elements tab */
+section.tab.elements {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 20px;
+  width: 100%;
+  height: 100%;
 }
 
 /* Element Circle Styles */

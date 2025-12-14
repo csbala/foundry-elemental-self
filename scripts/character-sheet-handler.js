@@ -31,19 +31,26 @@ function findTabsNavigation(html) {
 }
 
 /**
- * Find and return the content container element
+ * Find and return the content container element (the div that holds all tab sections)
  * @param {jQuery} html - jQuery wrapped HTML element
  * @returns {jQuery|null} Content element or null
  */
 function findContentContainer(html) {
-  let content = html.find("section.window-content");
-
-  if (content.length === 0) {
-    content = html.find(".window-content");
+  // Find the div with class "tab-body" that contains all the tab sections
+  let content = html.find('div[data-container-id="tabs"].tab-body');
+  console.log(`${MODULE_NAME} | Looking for div[data-container-id="tabs"].tab-body, found: ${content.length}`);
+  
+  if (content.length > 0) {
+    console.log(`${MODULE_NAME} | Found tab container with ${content.children('section.tab').length} existing tabs`);
+    return content;
   }
 
+  // Fallback: just look for .tab-body
+  content = html.find(".tab-body");
+  console.log(`${MODULE_NAME} | Fallback: Looking for .tab-body, found: ${content.length}`);
+
   if (content.length === 0) {
-    console.warn(`${MODULE_NAME} | Could not find content container!`);
+    console.warn(`${MODULE_NAME} | Could not find tab container!`);
     return null;
   }
 
@@ -69,30 +76,45 @@ function setInitialTabStates(html) {
  * @param {*} htmlInput - HTML element in various formats
  */
 export function addElementsTab(app, htmlInput) {
+  console.log(`${MODULE_NAME} | addElementsTab called`);
+  
   // Normalize HTML input to jQuery
   const html = normalizeHtml(htmlInput, app);
+  console.log(`${MODULE_NAME} | HTML normalized, length: ${html.length}`);
 
   // Check if tab already exists
   if (tabAlreadyExists(html)) {
+    console.log(`${MODULE_NAME} | Tab already exists, skipping`);
     return;
   }
 
   // Find tabs navigation
   const tabsNav = findTabsNavigation(html);
-  if (!tabsNav) return;
+  if (!tabsNav) {
+    console.warn(`${MODULE_NAME} | Failed to find tabs navigation`);
+    return;
+  }
+  console.log(`${MODULE_NAME} | Found tabs navigation`);
 
   // Find content container
   const content = findContentContainer(html);
-  if (!content) return;
+  if (!content) {
+    console.warn(`${MODULE_NAME} | Failed to find content container`);
+    return;
+  }
+  console.log(`${MODULE_NAME} | Found content container`);
 
   // Add tab button to navigation
   tabsNav.append(buildTabButton());
+  console.log(`${MODULE_NAME} | Tab button added`);
 
   // Add tab content to body
   content.append(buildTabContent());
+  console.log(`${MODULE_NAME} | Tab content added`);
 
   // Set initial states
   setInitialTabStates(html);
+  console.log(`${MODULE_NAME} | Tab injection complete`);
 }
 
 /**

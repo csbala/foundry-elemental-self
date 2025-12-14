@@ -25,14 +25,8 @@ export function buildTabButton() {
 export function buildTabContent() {
   return `
     <section class="tab elements" data-group="primary" data-tab="${TAB_CONFIG.ID}">
-      <div class="elemental-self-container">
-        <div class="element-circle-container">
-          <div class="element-circle blue">
-            <div class="element-circle-inner"></div>
-          </div>
-        </div>
-        <h2>Elemental Self System</h2>
-        <p>Your elemental powers will appear here...</p>
+      <div class="element-circle blue">
+        <div class="element-circle-inner"></div>
       </div>
     </section>
   `;
