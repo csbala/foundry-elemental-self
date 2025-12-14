@@ -159,8 +159,8 @@ export async function setupElementInteractions(html, app) {
         <div class="element-node" style="
           left: ${x}%;
           top: ${y}%;
-          background: ${currentColor};
-          box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor};
+          border-color: ${currentColor} !important;
+          box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor} !important;
         "></div>
       `);
 
@@ -194,11 +194,11 @@ export async function setupElementInteractions(html, app) {
     }
   });
 
-  // Load saved number of elements
+  // Load saved number of elements (but don't update nodes yet, wait for color to load)
+  let savedCount = 0;
   try {
-    const savedCount = await getNumberOfElements(actor);
+    savedCount = await getNumberOfElements(actor);
     numberOfElementsInput.val(savedCount);
-    updateElementNodes(savedCount);
     console.log(`${MODULE_NAME} | Loaded number of elements ${savedCount} from actor ${actor.name}`);
   } catch (error) {
     console.error(`${MODULE_NAME} | Failed to load number of elements:`, error);
@@ -303,6 +303,9 @@ export async function setupElementInteractions(html, app) {
     // Fall back to default
     updateCircleColor(colorPicker.val());
   }
+
+  // Now update element nodes with the loaded color and count
+  updateElementNodes(savedCount);
 
   // Burn Level interactions
   const burnLevelInput = html.find("#element-burn-level");
