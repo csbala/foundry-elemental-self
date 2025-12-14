@@ -84,6 +84,9 @@ export function buildTabContent() {
         <div class="elements-display">
           <div class="element-circle" data-element-color="#4a90e2">
             <div class="element-circle-inner"></div>
+            <div class="element-nodes-container" id="element-nodes-container">
+              <!-- Small circles will be added here dynamically -->
+            </div>
           </div>
         </div>
       </div>
@@ -126,13 +129,61 @@ export async function setupElementInteractions(html, app) {
     return;
   }
 
+  /**
+   * Update element nodes (small circles around the main circle)
+   * @param {number} count - Number of element nodes to display
+   */
+  function updateElementNodes(count) {
+    const nodesContainer = html.find("#element-nodes-container");
+    nodesContainer.empty();
+
+    if (count === 0) {
+      return; // No nodes to display
+    }
+
+    // Get the current element color
+    const currentColor = colorPicker.val();
+
+    // Calculate positions for each node
+    for (let i = 0; i < count; i++) {
+      // Calculate angle in radians (starting from top, going clockwise)
+      const angle = ((i * 360) / count - 90) * (Math.PI / 180);
+
+      // Calculate position (50% is center, we position at edge of circle)
+      // The circle has radius of 50% (relative to parent), small circles are positioned at ~92% to be on the edge
+      const x = 50 + 42 * Math.cos(angle);
+      const y = 50 + 42 * Math.sin(angle);
+
+      // Create small circle element
+      const node = $(`
+        <div class="element-node" style="
+          left: ${x}%;
+          top: ${y}%;
+          background: ${currentColor};
+          box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor};
+        "></div>
+      `);
+
+      nodesContainer.append(node);
+    }
+
+    console.log(`${MODULE_NAME} | Updated element nodes: ${count}`);
+  }
+
   // Number of Elements interactions
+  numberOfElementsInput.on("input", function () {
+    const count = parseInt($(this).val()) || 0;
+    const validCount = Math.max(0, count);
+    updateElementNodes(validCount);
+  });
+
   numberOfElementsInput.on("change", async function () {
     const count = parseInt($(this).val()) || 0;
     const validCount = Math.max(0, count);
-    
+
     // Update input to valid value
     $(this).val(validCount);
+    updateElementNodes(validCount);
 
     try {
       await setNumberOfElements(actor, validCount);
@@ -147,6 +198,7 @@ export async function setupElementInteractions(html, app) {
   try {
     const savedCount = await getNumberOfElements(actor);
     numberOfElementsInput.val(savedCount);
+    updateElementNodes(savedCount);
     console.log(`${MODULE_NAME} | Loaded number of elements ${savedCount} from actor ${actor.name}`);
   } catch (error) {
     console.error(`${MODULE_NAME} | Failed to load number of elements:`, error);
@@ -193,6 +245,9 @@ export async function setupElementInteractions(html, app) {
     const color = $(this).val();
     colorHex.val(color);
     updateCircleColor(color);
+    // Update node colors in real-time
+    const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+    updateElementNodes(currentCount);
   });
 
   colorPicker.on("change", async function () {
@@ -220,6 +275,9 @@ export async function setupElementInteractions(html, app) {
       colorPicker.val(color);
       $(this).val(color);
       updateCircleColor(color);
+      // Update node colors when hex is manually changed
+      const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+      updateElementNodes(currentCount);
 
       // Save to actor
       try {
