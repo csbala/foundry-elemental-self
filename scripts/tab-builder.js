@@ -220,7 +220,7 @@ export async function setupElementInteractions(html, app) {
    * @returns {Object} { color, borderColor, text }
    */
   function getBurnLevelState(level) {
-    if (level <= 15) {
+    if (level < 100 && level <= 15) {
       return {
         color: "#22c55e",
         borderColor: "rgba(34, 197, 94, 0.6)",
@@ -234,26 +234,19 @@ export async function setupElementInteractions(html, app) {
         text: "Average burn level",
         bgTint: "rgba(234, 179, 8, 0.15)"
       };
-    } else if (level <= 32) {
+    } else if (level <= 35) {
       return {
         color: "#f59e0b",
         borderColor: "rgba(245, 158, 11, 0.6)",
-        text: "Heightened senses: reduced pain threshold",
+        text: "Higher than average burn level - Try to get medication",
         bgTint: "rgba(245, 158, 11, 0.15)"
-      };
-    } else if (level <= 40) {
-      return {
-        color: "#f97316",
-        borderColor: "rgba(249, 115, 22, 0.6)",
-        text: 'Magic Number: likelihood of gaining Magic',
-        bgTint: "rgba(249, 115, 22, 0.15)"
       };
     } else if (level <= 50) {
       return {
-        color: "#ef4444",
-        borderColor: "rgba(239, 68, 68, 0.6)",
-        text: "Unusual burn activity: demonic whispers",
-        bgTint: "rgba(239, 68, 68, 0.15)"
+        color: "#f97316",
+        borderColor: "rgba(249, 115, 22, 0.6)",
+        text: "Nausea and headaches! Your burn level is too high",
+        bgTint: "rgba(249, 115, 22, 0.15)"
       };
     } else if (level <= 60) {
       return {
@@ -262,19 +255,34 @@ export async function setupElementInteractions(html, app) {
         text: "Unhealthy burn: health complications",
         bgTint: "rgba(220, 38, 38, 0.15)"
       };
+    } else if (level <= 70) {
+      return {
+        color: "#ef4444",
+        borderColor: "rgba(239, 68, 68, 0.6)",
+        text: "Unusual burn activity: demonic whispers",
+        bgTint: "rgba(239, 68, 68, 0.15)"
+      };
     } else if (level <= 80) {
       return {
         color: "#991b1b",
         borderColor: "rgba(153, 27, 27, 0.8)",
-        text: "⚠️ COMPROMISED - Seek medical help immediately",
+        text: "COMPROMISED - Seek medical help immediately",
         bgTint: "rgba(153, 27, 27, 0.2)"
       };
-    } else {
+    } else if (level < 100) {
       return {
         color: "#450a0a",
         borderColor: "rgba(69, 10, 10, 1)",
-        text: "🔥 EXTREME DANGER - Critical burn levels!",
+        text: "EXTREME DANGER - Critical burn levels!",
         bgTint: "rgba(69, 10, 10, 0.3)"
+      };
+    } else {
+      // Level 100 - Special mysterious message
+      return {
+        color: "#ffffff",
+        borderColor: "rgba(255, 255, 255, 0.9)",
+        text: "Deus misereatur... Pray for your soul",
+        bgTint: "rgba(255, 255, 255, 0.1)"
       };
     }
   }
