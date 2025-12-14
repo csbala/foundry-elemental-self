@@ -98,6 +98,49 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
 }
 
+/* Burn Level Input */
+.element-burn-level {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background: linear-gradient(to bottom, rgba(34, 197, 94, 0.15), rgba(0, 0, 0, 0.3));
+  border: 2px solid rgba(34, 197, 94, 0.6);
+  border-radius: 4px;
+  color: #f0f0e0;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+}
+
+.element-burn-level:focus {
+  outline: none;
+}
+
+.element-burn-level:hover {
+  transform: translateY(-1px);
+}
+
+/* Burn Level Status Text */
+.burn-level-status {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  color: #22c55e;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.4;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Right side - Display */
 .elements-display {
   flex: 1;

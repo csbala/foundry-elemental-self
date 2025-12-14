@@ -4,7 +4,7 @@
 
 import { TAB_CONFIG } from "./constants.js";
 import { MODULE_NAME } from "./constants.js";
-import { getElementColor, setElementColor } from "./element-storage.js";
+import { getElementColor, setElementColor, getBurnLevel, setBurnLevel } from "./element-storage.js";
 
 /**
  * Builds the tab button HTML
@@ -49,6 +49,22 @@ export function buildTabContent() {
                      pattern="^#[0-9A-Fa-f]{6}$"
                      data-tooltip="Hex Color Code"
                      aria-label="Hex Color Code">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="element-burn-level">Burn Level</label>
+            <input type="number" 
+                   id="element-burn-level" 
+                   class="element-burn-level"
+                   value="0"
+                   min="0"
+                   max="100"
+                   step="1"
+                   data-tooltip="Burn Level (0-100)"
+                   aria-label="Burn Level">
+            <div class="burn-level-status" id="burn-level-status">
+              All clear! Good job!
             </div>
           </div>
         </div>
@@ -192,5 +208,130 @@ export async function setupElementInteractions(html, app) {
     console.error(`${MODULE_NAME} | Failed to load saved color:`, error);
     // Fall back to default
     updateCircleColor(colorPicker.val());
+  }
+
+  // Burn Level interactions
+  const burnLevelInput = html.find("#element-burn-level");
+  const burnLevelStatus = html.find("#burn-level-status");
+
+  /**
+   * Get burn level color and status text based on level
+   * @param {number} level - Burn level (0-100)
+   * @returns {Object} { color, borderColor, text }
+   */
+  function getBurnLevelState(level) {
+    if (level <= 15) {
+      return {
+        color: "#22c55e",
+        borderColor: "rgba(34, 197, 94, 0.6)",
+        text: "All clear! Good job!",
+        bgTint: "rgba(34, 197, 94, 0.15)"
+      };
+    } else if (level <= 20) {
+      return {
+        color: "#eab308",
+        borderColor: "rgba(234, 179, 8, 0.6)",
+        text: "Average burn level",
+        bgTint: "rgba(234, 179, 8, 0.15)"
+      };
+    } else if (level <= 32) {
+      return {
+        color: "#f59e0b",
+        borderColor: "rgba(245, 158, 11, 0.6)",
+        text: "Heightened senses: reduced pain threshold",
+        bgTint: "rgba(245, 158, 11, 0.15)"
+      };
+    } else if (level <= 40) {
+      return {
+        color: "#f97316",
+        borderColor: "rgba(249, 115, 22, 0.6)",
+        text: 'Magic Number: likelihood of gaining Magic',
+        bgTint: "rgba(249, 115, 22, 0.15)"
+      };
+    } else if (level <= 50) {
+      return {
+        color: "#ef4444",
+        borderColor: "rgba(239, 68, 68, 0.6)",
+        text: "Unusual burn activity: demonic whispers",
+        bgTint: "rgba(239, 68, 68, 0.15)"
+      };
+    } else if (level <= 60) {
+      return {
+        color: "#dc2626",
+        borderColor: "rgba(220, 38, 38, 0.6)",
+        text: "Unhealthy burn: health complications",
+        bgTint: "rgba(220, 38, 38, 0.15)"
+      };
+    } else if (level <= 80) {
+      return {
+        color: "#991b1b",
+        borderColor: "rgba(153, 27, 27, 0.8)",
+        text: "⚠️ COMPROMISED - Seek medical help immediately",
+        bgTint: "rgba(153, 27, 27, 0.2)"
+      };
+    } else {
+      return {
+        color: "#450a0a",
+        borderColor: "rgba(69, 10, 10, 1)",
+        text: "🔥 EXTREME DANGER - Critical burn levels!",
+        bgTint: "rgba(69, 10, 10, 0.3)"
+      };
+    }
+  }
+
+  /**
+   * Update burn level visual state
+   * @param {number} level - Burn level (0-100)
+   */
+  function updateBurnLevelVisuals(level) {
+    const state = getBurnLevelState(level);
+    
+    burnLevelInput.css({
+      "border-color": state.borderColor,
+      "box-shadow": `0 0 10px ${state.borderColor}`,
+      "background": `linear-gradient(to bottom, ${state.bgTint}, rgba(0, 0, 0, 0.3))`
+    });
+
+    burnLevelStatus.css({
+      "color": state.color,
+      "text-shadow": `0 0 8px ${state.borderColor}`
+    });
+
+    burnLevelStatus.text(state.text);
+  }
+
+  // Update visuals on input (live preview)
+  burnLevelInput.on("input", function () {
+    const level = parseInt($(this).val()) || 0;
+    const clampedLevel = Math.max(0, Math.min(100, level));
+    updateBurnLevelVisuals(clampedLevel);
+  });
+
+  // Save burn level when it changes
+  burnLevelInput.on("change", async function () {
+    const level = parseInt($(this).val()) || 0;
+    const clampedLevel = Math.max(0, Math.min(100, level));
+    
+    // Update input to clamped value
+    $(this).val(clampedLevel);
+    updateBurnLevelVisuals(clampedLevel);
+
+    try {
+      await setBurnLevel(actor, clampedLevel);
+      console.log(`${MODULE_NAME} | Saved burn level ${clampedLevel} to actor ${actor.name}`);
+    } catch (error) {
+      console.error(`${MODULE_NAME} | Failed to save burn level:`, error);
+      ui.notifications.error("Failed to save burn level");
+    }
+  });
+
+  // Load saved burn level
+  try {
+    const savedBurnLevel = await getBurnLevel(actor);
+    burnLevelInput.val(savedBurnLevel);
+    updateBurnLevelVisuals(savedBurnLevel);
+    console.log(`${MODULE_NAME} | Loaded burn level ${savedBurnLevel} from actor ${actor.name}`);
+  } catch (error) {
+    console.error(`${MODULE_NAME} | Failed to load burn level:`, error);
   }
 }

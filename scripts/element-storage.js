@@ -10,6 +10,7 @@ import { MODULE_ID } from "./constants.js";
 const STORAGE_CONFIG = {
   defaults: {
     elementColor: "#4a90e2",
+    burnLevel: 0,
   },
 };
 
@@ -67,4 +68,26 @@ export async function setElementColor(actor, color) {
     throw new Error(`Invalid color: ${color}. Must be a hex color (e.g., "#4a90e2")`);
   }
   await setFlag(actor, "elementColor", color);
+}
+
+/**
+ * Retrieve the stored burn level for a specific actor.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @returns {Promise<number>} The burn level (0-100).
+ */
+export async function getBurnLevel(actor) {
+  return await getFlag(actor, "burnLevel", STORAGE_CONFIG.defaults.burnLevel);
+}
+
+/**
+ * Set or update the burn level for a specific actor.
+ *
+ * @param {Actor5e} actor - The Foundry VTT actor object.
+ * @param {number} level - The burn level (0-100).
+ * @returns {Promise<void>}
+ */
+export async function setBurnLevel(actor, level) {
+  const burnLevel = Math.max(0, Math.min(100, parseInt(level) || 0));
+  await setFlag(actor, "burnLevel", burnLevel);
 }
