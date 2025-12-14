@@ -78,10 +78,10 @@ export async function addElementsTab(app, htmlInput) {
     const html = normalizeHtml(htmlInput, app);
     console.log(`${MODULE_NAME} | HTML normalized, length: ${html.length}`);
 
-    // Get the previously active tab from our tracker (don't default to anything)
+    // Get the previously active tab from our tracker
     const sheetId = app.id;
-    const previousActiveTab = activeTabTracker.get(sheetId);
-    console.log(`${MODULE_NAME} | Previous active tab from tracker: ${previousActiveTab || "none"}`);
+    const previousActiveTab = activeTabTracker.get(sheetId) || "details";
+    console.log(`${MODULE_NAME} | Previous active tab from tracker: ${previousActiveTab}`);
 
     // Remove any existing Elements tab to avoid duplicates
     html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`).remove();
@@ -116,19 +116,6 @@ export async function addElementsTab(app, htmlInput) {
     await setupElementInteractions(html, app);
     console.log(`${MODULE_NAME} | Element interactions initialized`);
 
-    // Restore active state IMMEDIATELY if we have a tracked tab
-    if (previousActiveTab) {
-      // Remove active from all
-      html.find('nav.tabs a[data-action="tab"]').removeClass("active");
-      html.find('section.tab[data-group="primary"]').removeClass("active");
-
-      // Add active to the previously active tab
-      html.find(`nav.tabs a[data-tab="${previousActiveTab}"]`).addClass("active");
-      html.find(`section.tab[data-tab="${previousActiveTab}"]`).addClass("active");
-      
-      console.log(`${MODULE_NAME} | Pre-restored active tab: ${previousActiveTab}`);
-    }
-
     // Track clicks on ALL tabs to know which one user selected
     html.find('nav.tabs a[data-action="tab"]').on("click", function () {
       const clickedTab = $(this).data("tab");
@@ -136,41 +123,49 @@ export async function addElementsTab(app, htmlInput) {
       console.log(`${MODULE_NAME} | User clicked tab: ${clickedTab}`);
     });
 
-    // Re-bind tabs to include our new tab
-    if (app._tabs && app._tabs.length > 0) {
-      const primaryTabs = app._tabs.find((t) => t.group === "primary");
-      if (primaryTabs) {
-        primaryTabs.bind(html[0] || html);
-        console.log(`${MODULE_NAME} | Tabs re-bound to include Elements tab`);
-        
-        // Re-activate after bind to prevent Foundry from resetting
-        if (previousActiveTab) {
-          primaryTabs.activate(previousActiveTab);
-          console.log(`${MODULE_NAME} | Re-activated tab via Foundry: ${previousActiveTab}`);
+    // Re-bind tabs to include our new tab - try multiple times if needed
+    const tryBindTabs = () => {
+      if (app._tabs && app._tabs.length > 0) {
+        const primaryTabs = app._tabs.find((t) => t.group === "primary");
+        if (primaryTabs) {
+          primaryTabs.bind(html[0] || html);
+          console.log(`${MODULE_NAME} | Tabs re-bound to include Elements tab`);
+          return true;
+        } else {
+          console.warn(`${MODULE_NAME} | Primary tabs not found in app._tabs`);
         }
-      } else {
-        console.warn(`${MODULE_NAME} | Primary tabs not found in app._tabs`);
       }
-    } else {
-      console.warn(`${MODULE_NAME} | app._tabs not available - setting up manual fallback`);
-      
-      // Fallback: Add manual click handler for Elements tab if Foundry's system isn't ready
-      html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`).on("click", function(e) {
-        e.preventDefault();
-        
-        // Remove active from all tabs
-        html.find('nav.tabs a[data-action="tab"]').removeClass("active");
-        html.find('section.tab[data-group="primary"]').removeClass("active");
-        
-        // Add active to Elements tab
-        $(this).addClass("active");
-        html.find(`section.tab[data-tab="${TAB_CONFIG.ID}"]`).addClass("active");
-        
-        // Track the change
-        activeTabTracker.set(sheetId, TAB_CONFIG.ID);
-        console.log(`${MODULE_NAME} | Elements tab activated via fallback handler`);
-      });
+      return false;
+    };
+
+    // Try immediately
+    if (!tryBindTabs()) {
+      // If not available, try again after a delay
+      setTimeout(() => {
+        if (!tryBindTabs()) {
+          console.warn(`${MODULE_NAME} | app._tabs still not available after delay`);
+        }
+      }, 50);
     }
+
+    // ALWAYS restore the active tab manually (don't rely on Foundry's system)
+    setTimeout(() => {
+      // Remove active from all
+      html.find('nav.tabs a[data-action="tab"]').removeClass("active");
+      html.find('section.tab[data-group="primary"]').removeClass("active");
+
+      // Add active to the previously active tab
+      const activeButton = html.find(`nav.tabs a[data-tab="${previousActiveTab}"]`);
+      const activeContent = html.find(`section.tab[data-tab="${previousActiveTab}"]`);
+      
+      if (activeButton.length > 0 && activeContent.length > 0) {
+        activeButton.addClass("active");
+        activeContent.addClass("active");
+        console.log(`${MODULE_NAME} | Manually restored active tab: ${previousActiveTab}`);
+      } else {
+        console.warn(`${MODULE_NAME} | Could not find tab elements for: ${previousActiveTab}`);
+      }
+    }, 100);
 
     console.log(`${MODULE_NAME} | Tab injection complete`);
   } catch (error) {
@@ -217,10 +212,10 @@ export function registerCharacterSheetHooks() {
     }
   });
 
-  // Clean up tab tracker when sheet closes
+  // DON'T clean up tracker - keep it so we remember which tab was active
+  // This allows reopening the sheet to restore the last active tab
   Hooks.on("closeCharacterActorSheet", (app) => {
-    activeTabTracker.delete(app.id);
-    console.log(`${MODULE_NAME} | Character sheet ${app.id} closed, tracker cleaned`);
+    console.log(`${MODULE_NAME} | Character sheet ${app.id} closed (keeping tracker)`);
   });
 
   console.log(`${MODULE_NAME} | Character sheet hooks registered`);
