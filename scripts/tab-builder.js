@@ -150,9 +150,9 @@ export async function setupElementInteractions(html, app) {
       const angle = ((i * 360) / count - 90) * (Math.PI / 180);
 
       // Calculate position (50% is center, we position at edge of circle)
-      // The circle has radius of 50% (relative to parent), small circles are positioned at ~92% to be on the edge
-      const x = 50 + 42 * Math.cos(angle);
-      const y = 50 + 42 * Math.sin(angle);
+      // The circle has radius of 50% (relative to parent), small circles are positioned farther out
+      const x = 50 + 52 * Math.cos(angle);
+      const y = 50 + 52 * Math.sin(angle);
 
       // Create small circle element
       const node = $(`
@@ -225,13 +225,10 @@ export async function setupElementInteractions(html, app) {
     const darkG = Math.round(g * 0.6);
     const darkB = Math.round(b * 0.6);
 
-    const lightColor = hexColor;
-    const darkColor = `#${darkR.toString(16).padStart(2, "0")}${darkG.toString(16).padStart(2, "0")}${darkB.toString(16).padStart(2, "0")}`;
-
-    // Apply gradient and glow
+    // Apply glow effect both inward and outward
     elementCircle.css({
-      background: `linear-gradient(135deg, ${lightColor} 0%, ${darkColor} 100%)`,
-      "box-shadow": `0 0 30px rgba(${r}, ${g}, ${b}, 0.6)`,
+      "box-shadow": `0 0 40px rgba(${r}, ${g}, ${b}, 0.8), inset 0 0 40px rgba(${r}, ${g}, ${b}, 0.6)`,
+      "border-color": `rgba(${r}, ${g}, ${b}, 0.4)`,
     });
 
     // Store color in data attribute
