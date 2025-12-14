@@ -1,0 +1,35 @@
+{
+  "id": "foundry-elemental-self",
+  "title": "Elemental Self",
+  "description": "Adds the Elemental Self system to D&D 5e character sheets. Elements are narrative-driven metaphysical forces that awaken through story moments and grant Element Dice to empower actions.",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "Cservenák Balázs"
+    }
+  ],
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13",
+    "maximum": "13.999"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "compatibility": {
+          "minimum": "5.0.0",
+          "verified": "5.1.10",
+          "maximum": "5.99"
+        }
+      }
+    ]
+  },
+  "esmodules": ["scripts/main.js"],
+  "styles": ["styles/elemental-self.css"],
+  "languages": [],
+  "url": "https://github.com/csbala/foundry-elemental-self",
+  "manifest": "https://raw.githubusercontent.com/csbala/foundry-elemental-self/main/module.json",
+  "download": "https://github.com/csbala/foundry-elemental-self/archive/refs/heads/main.zip",
+  "readme": "https://github.com/csbala/foundry-elemental-self#readme"
+}
