@@ -1,7 +1,11 @@
 /* Elemental Self Styles */
 
-/* Center content in the Elements tab */
-section.tab.elements {
+/* Center content in the Elements tab - ONLY when active */
+section.tab.elements:not(.active) {
+  display: none !important;
+}
+
+section.tab.elements.active {
   display: flex;
   justify-content: center;
   align-items: center;
