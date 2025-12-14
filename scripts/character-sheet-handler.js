@@ -140,6 +140,9 @@ export function addElementsTab(app, htmlInput) {
         $(this).addClass("active");
         html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
         
+        // Force ability scores to show again (in case CSS timing is off)
+        html.find("section.ability-scores").css("display", "");
+        
         console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
       }
     });
@@ -200,6 +203,9 @@ export function addElementsTab(app, htmlInput) {
               // Manually activate the target tab and its content
               $(this).addClass("active");
               html.find(`section.tab[data-tab="${targetTab}"]`).addClass("active");
+              
+              // Force ability scores to show again (in case CSS timing is off)
+              html.find("section.ability-scores").css("display", "");
               
               console.log(`${MODULE_NAME} | Switching from Elements to ${targetTab} tab`);
             }
