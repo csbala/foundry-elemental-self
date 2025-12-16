@@ -38,8 +38,9 @@ export function buildTabContent() {
                    class="element-number"
                    value="0"
                    min="0"
+                   max="10"
                    step="1"
-                   data-tooltip="Number of Elements"
+                   data-tooltip="Number of Elements (Max: 10)"
                    aria-label="Number of Elements">
           </div>
 
@@ -82,6 +83,9 @@ export function buildTabContent() {
         </div>
         
         <div class="elements-display">
+          <!-- Particle effect container -->
+          <div class="particles-container" id="particles-container"></div>
+          
           <div class="element-circle" data-element-color="#4a90e2">
             <div class="element-circle-inner"></div>
             <div class="element-nodes-container" id="element-nodes-container">
@@ -92,6 +96,84 @@ export function buildTabContent() {
       </div>
     </section>
   `;
+}
+
+/**
+ * Initialize floating particle effects
+ * @param {jQuery} container - Particles container element
+ * @param {string} color - Element color for particles
+ */
+function initializeParticles(container, color) {
+  // Clear existing particles
+  container.empty();
+
+  // Generate 20 particles
+  const particleCount = 20;
+
+  for (let i = 0; i < particleCount; i++) {
+    createParticle(container, color, i);
+  }
+}
+
+/**
+ * Create a single particle with random properties
+ * @param {jQuery} container - Particles container
+ * @param {string} color - Particle color
+ * @param {number} index - Particle index for stagger
+ */
+function createParticle(container, color, index) {
+  const particle = $('<div class="particle"></div>');
+
+  // Random starting position
+  const startX = Math.random() * 100;
+  const startY = Math.random() * 100;
+
+  // Random movement vector
+  const moveX = (Math.random() - 0.5) * 200; // -100 to 100
+  const moveY = (Math.random() - 0.5) * 200;
+
+  // Random size between 2-8px
+  const size = Math.random() * 6 + 2;
+
+  // Random animation duration between 3-8 seconds
+  const duration = Math.random() * 5 + 3;
+
+  // Random delay based on index for staggered effect
+  const delay = (index * 0.2) % 3;
+
+  // Pick random animation variant
+  const animations = ["float-particle-1", "float-particle-2", "float-particle-3"];
+  const animation = animations[Math.floor(Math.random() * animations.length)];
+
+  // Apply styles
+  particle.css({
+    left: `${startX}%`,
+    top: `${startY}%`,
+    width: `${size}px`,
+    height: `${size}px`,
+    background: color,
+    boxShadow: `0 0 ${size * 2}px ${color}, 0 0 ${size * 4}px ${color}`,
+    "--tx": `${moveX}px`,
+    "--ty": `${moveY}px`,
+    animation: `${animation} ${duration}s ease-in-out ${delay}s infinite`,
+  });
+
+  container.append(particle);
+}
+
+/**
+ * Update particle colors when element color changes
+ * @param {jQuery} container - Particles container
+ * @param {string} newColor - New element color
+ */
+function updateParticleColors(container, newColor) {
+  container.find(".particle").each(function () {
+    const size = parseFloat($(this).css("width"));
+    $(this).css({
+      background: newColor,
+      boxShadow: `0 0 ${size * 2}px ${newColor}, 0 0 ${size * 4}px ${newColor}`,
+    });
+  });
 }
 
 /**
@@ -122,12 +204,16 @@ export async function setupElementInteractions(html, app) {
   const colorHex = html.find("#element-color-hex");
   const elementCircle = html.find(".element-circle");
   const numberOfElementsInput = html.find("#element-number");
+  const particlesContainer = html.find("#particles-container");
   const actor = app.actor;
 
   if (!actor) {
     console.error(`${MODULE_NAME} | No actor found for element interactions`);
     return;
   }
+
+  // Initialize particle system
+  initializeParticles(particlesContainer, colorPicker.val());
 
   // Set up hook to clean node assignments when items are deleted
   const hookId = Hooks.on("deleteItem", async (item, options, userId) => {
@@ -498,13 +584,13 @@ export async function setupElementInteractions(html, app) {
   // Number of Elements interactions
   numberOfElementsInput.on("input", async function () {
     const count = parseInt($(this).val()) || 0;
-    const validCount = Math.max(0, count);
+    const validCount = Math.max(0, Math.min(10, count)); // Clamp between 0 and 10
     await updateElementNodes(validCount);
   });
 
   numberOfElementsInput.on("change", async function () {
     const count = parseInt($(this).val()) || 0;
-    const validCount = Math.max(0, count);
+    const validCount = Math.max(0, Math.min(10, count)); // Clamp between 0 and 10
 
     // Update input to valid value
     $(this).val(validCount);
@@ -523,6 +609,7 @@ export async function setupElementInteractions(html, app) {
   let savedCount = 0;
   try {
     savedCount = await getNumberOfElements(actor);
+    savedCount = Math.max(0, Math.min(10, savedCount)); // Clamp between 0 and 10
     numberOfElementsInput.val(savedCount);
     console.log(`${MODULE_NAME} | Loaded number of elements ${savedCount} from actor ${actor.name}`);
   } catch (error) {
@@ -558,6 +645,14 @@ export async function setupElementInteractions(html, app) {
 
     // Store color in data attribute
     elementCircle.attr("data-element-color", hexColor);
+
+    // Update particles with new color
+    updateParticleColors(particlesContainer, hexColor);
+
+    // Update ambient glow background
+    html.find(".elements-display::before").css({
+      background: `radial-gradient(circle, rgba(${r}, ${g}, ${b}, 0.2) 0%, rgba(${r}, ${g}, ${b}, 0.05) 50%, transparent 70%)`,
+    });
 
     console.log(`${MODULE_NAME} | Circle color updated to ${hexColor}`);
   }

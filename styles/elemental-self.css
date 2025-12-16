@@ -12,6 +12,8 @@ section.tab.elements.active {
   width: 100%;
   height: 100%;
   padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Hide ability scores when Elements tab is active */
@@ -228,7 +230,7 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
 
 /* Awakened state - full color, glowing, pulsing (color applied via inline styles) */
 .element-node-awakened {
-  animation: node-pulse 2s ease-in-out infinite;
+  animation: node-pulse 10s ease-in-out infinite;
   filter: none;
 }
 
@@ -325,4 +327,108 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
 .elemental-self-container p {
   color: #ccc;
   text-align: center;
+}
+
+/* Particle Effects Container */
+.particles-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  filter: blur(1px);
+}
+
+/* Multiple particle animation variations */
+@keyframes float-particle-1 {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes float-particle-2 {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) rotate(360deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+@keyframes float-particle-3 {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Ambient glow overlay for elements display */
+.elements-display {
+  position: relative;
+  z-index: 2;
+}
+
+.elements-display::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(74, 144, 226, 0.2) 0%, rgba(74, 144, 226, 0.05) 50%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+  animation: ambient-pulse 3s ease-in-out infinite;
+}
+
+@keyframes ambient-pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.8;
+  }
 }
