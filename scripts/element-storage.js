@@ -116,13 +116,26 @@ export async function setNumberOfElements(actor, count) {
 }
 
 /**
- * Retrieve element node assignments (features assigned to each node).
+ * Retrieve element node assignments (features assigned to each node) with customization data.
  *
  * @param {Actor5e} actor - The Foundry VTT actor object.
- * @returns {Promise<Object>} Map of node index to feature data {itemId, img, name, uuid}.
+ * @returns {Promise<Object>} Map of node index to feature data with customization.
  */
 export async function getElementNodes(actor) {
-  return await getFlag(actor, "elementNodes", {});
+  const nodes = await getFlag(actor, "elementNodes", {});
+  
+  // Ensure all nodes have customization defaults
+  Object.keys(nodes).forEach(key => {
+    nodes[key] = {
+      ...nodes[key],
+      customColor: nodes[key].customColor || null,
+      intensity: nodes[key].intensity ?? 100,
+      note: nodes[key].note || "",
+      sizeModifier: nodes[key].sizeModifier ?? 100
+    };
+  });
+  
+  return nodes;
 }
 
 /**

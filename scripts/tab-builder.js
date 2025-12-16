@@ -330,19 +330,49 @@ export async function setupElementInteractions(html, app) {
       const savedBonus = assignedFeature?.bonus || 0;
       const isAwakened = assignedFeature?.awakened || false;
 
+      // Get customization settings
+      const nodeColor = assignedFeature?.customColor || currentColor;
+      const nodeIntensity = assignedFeature?.intensity ?? 100;
+      const nodeSizeModifier = assignedFeature?.sizeModifier ?? 100;
+      const nodeNote = assignedFeature?.note || "";
+
+      // Calculate RGB from color for intensity application
+      const r = parseInt(nodeColor.slice(1, 3), 16);
+      const g = parseInt(nodeColor.slice(3, 5), 16);
+      const b = parseInt(nodeColor.slice(5, 7), 16);
+      const intensityAlpha = nodeIntensity / 100;
+
+      // Calculate size
+      const baseSize = 150;
+      const actualSize = baseSize * (nodeSizeModifier / 100);
+
       // Determine state class (dormant by default, awakened if activated)
       const stateClass = isAwakened ? "element-node-awakened" : "element-node-dormant";
 
-      // Apply awakened styles inline if awakened
-      const awakenedStyles = isAwakened ? `border-color: ${currentColor} !important; box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor} !important;` : "";
+      // Apply awakened styles with customization
+      const awakenedStyles = isAwakened 
+        ? `border-color: rgba(${r}, ${g}, ${b}, ${intensityAlpha}) !important; 
+           box-shadow: 0 0 ${15 * intensityAlpha}px rgba(${r}, ${g}, ${b}, ${intensityAlpha}), 
+                       0 0 ${30 * intensityAlpha}px rgba(${r}, ${g}, ${b}, ${intensityAlpha * 0.8}) !important;
+           opacity: ${0.5 + (intensityAlpha / 2)} !important;` 
+        : `opacity: ${0.3 + (intensityAlpha / 5)} !important;`;
 
-      // Create small circle element with bonus input
+      // Add tooltip with note if present
+      const tooltipAttr = nodeNote ? `data-tooltip="${nodeNote}"` : '';
+
+      // Create small circle element with bonus input and customization
       const node = $(`
-        <div class="element-node ${stateClass}" data-node-index="${i}" data-element-color="${currentColor}" style="
-          left: ${x}%;
-          top: ${y}%;
-          ${awakenedStyles}
-        ">
+        <div class="element-node ${stateClass}" 
+             data-node-index="${i}" 
+             data-element-color="${nodeColor}" 
+             ${tooltipAttr}
+             style="
+               left: ${x}%;
+               top: ${y}%;
+               width: ${actualSize}px;
+               height: ${actualSize}px;
+               ${awakenedStyles}
+             ">
           ${featureImg}
           <input type="number" 
                  class="element-node-bonus" 
@@ -362,6 +392,9 @@ export async function setupElementInteractions(html, app) {
 
       // Add awakened state toggle handler
       setupAwakenToggle(node[0], i);
+
+      // Add context menu handler
+      setupNodeContextMenu(node[0], i);
 
       nodesContainer.append(node);
     }
@@ -400,6 +433,225 @@ export async function setupElementInteractions(html, app) {
         console.error(`${MODULE_NAME} | Failed to toggle awakened state:`, error);
       }
     });
+  }
+
+  /**
+   * Setup right-click context menu for node customization
+   * @param {HTMLElement} nodeElement - The node DOM element
+   * @param {number} nodeIndex - The index of this node
+   */
+  function setupNodeContextMenu(nodeElement, nodeIndex) {
+    nodeElement.addEventListener("contextmenu", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      // Remove any existing context menu
+      document.querySelectorAll(".element-context-menu").forEach(menu => menu.remove());
+
+      // Get current node data
+      const nodes = await getElementNodes(actor);
+      const nodeData = nodes[nodeIndex];
+
+      if (!nodeData) return;
+
+      // Create context menu
+      const menu = document.createElement("div");
+      menu.className = "element-context-menu";
+      menu.style.left = `${event.pageX}px`;
+      menu.style.top = `${event.pageY}px`;
+
+      menu.innerHTML = `
+        <div class="context-menu-item" data-action="customize">
+          <i class="fas fa-cog"></i> Customize Element
+        </div>
+        ${nodeData.itemId ? `
+          <div class="context-menu-item" data-action="remove">
+            <i class="fas fa-trash"></i> Remove Feature
+          </div>
+        ` : ''}
+      `;
+
+      document.body.appendChild(menu);
+
+      // Handle menu item clicks
+      menu.querySelectorAll(".context-menu-item").forEach(item => {
+        item.addEventListener("click", async () => {
+          const action = item.dataset.action;
+
+          if (action === "customize") {
+            await showCustomizationModal(nodeIndex, nodeData);
+          } else if (action === "remove") {
+            await removeFeatureFromNode(nodeIndex);
+          }
+
+          menu.remove();
+        });
+      });
+
+      // Close menu on outside click
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener("click", closeMenu);
+        }
+      };
+
+      setTimeout(() => {
+        document.addEventListener("click", closeMenu);
+      }, 10);
+    });
+  }
+
+  /**
+   * Show customization modal for a node
+   * @param {number} nodeIndex - The index of this node
+   * @param {Object} nodeData - Current node data
+   */
+  async function showCustomizationModal(nodeIndex, nodeData) {
+    const currentColor = nodeData.customColor || colorPicker.val();
+    const useCustomColor = nodeData.customColor !== null;
+
+    new Dialog({
+      title: `Customize Element Node`,
+      content: `
+        <form class="element-customize-form">
+          <div class="form-group">
+            <label>Element: <strong>${nodeData.name || "Empty Node"}</strong></label>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">🎨 Color</label>
+            <div class="color-radio-group">
+              <label class="radio-option">
+                <input type="radio" name="colorMode" value="main" ${!useCustomColor ? 'checked' : ''}>
+                <span>Use Main Color</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="colorMode" value="custom" ${useCustomColor ? 'checked' : ''}>
+                <span>Custom Color</span>
+              </label>
+            </div>
+            <div class="custom-color-picker" style="display: ${useCustomColor ? 'flex' : 'none'};">
+              <input type="color" id="node-custom-color" value="${currentColor}">
+              <input type="text" id="node-custom-color-hex" value="${currentColor}" maxlength="7" placeholder="#RRGGBB">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">✨ Visual Intensity</label>
+            <div class="slider-container">
+              <input type="range" id="node-intensity" min="0" max="200" value="${nodeData.intensity}" step="5">
+              <span class="slider-value">${nodeData.intensity}%</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">📏 Node Size</label>
+            <div class="slider-container">
+              <input type="range" id="node-size" min="80" max="120" value="${nodeData.sizeModifier}" step="5">
+              <span class="slider-value">${nodeData.sizeModifier}%</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">📝 Custom Note</label>
+            <textarea id="node-note" maxlength="200" rows="3" placeholder="e.g., Corrupted by shadow curse">${nodeData.note || ''}</textarea>
+            <div class="char-counter"><span id="note-char-count">${(nodeData.note || '').length}</span>/200</div>
+          </div>
+        </form>
+      `,
+      buttons: {
+        reset: {
+          icon: '<i class="fas fa-undo"></i>',
+          label: "Reset to Default",
+          callback: async (html) => {
+            const resetData = {
+              ...nodeData,
+              customColor: null,
+              intensity: 100,
+              note: "",
+              sizeModifier: 100
+            };
+            await setElementNode(actor, nodeIndex, resetData);
+            const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+            await updateElementNodes(currentCount);
+            ui.notifications.info("Node customization reset");
+            return false;
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancel"
+        },
+        save: {
+          icon: '<i class="fas fa-save"></i>',
+          label: "Save",
+          callback: async (html) => {
+            const colorMode = html.find('input[name="colorMode"]:checked').val();
+            const customColor = colorMode === "custom" ? html.find("#node-custom-color").val() : null;
+            const intensity = parseInt(html.find("#node-intensity").val());
+            const sizeModifier = parseInt(html.find("#node-size").val());
+            const note = html.find("#node-note").val();
+
+            const updatedData = {
+              ...nodeData,
+              customColor,
+              intensity,
+              sizeModifier,
+              note
+            };
+
+            await setElementNode(actor, nodeIndex, updatedData);
+            const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+            await updateElementNodes(currentCount);
+            ui.notifications.info("Node customization saved");
+          }
+        }
+      },
+      default: "save",
+      render: (html) => {
+        // Toggle custom color picker visibility
+        const radioButtons = html.find('input[name="colorMode"]');
+        const customColorPicker = html.find(".custom-color-picker");
+
+        radioButtons.on("change", function() {
+          customColorPicker.css("display", $(this).val() === "custom" ? "flex" : "none");
+        });
+
+        // Sync color picker and hex input
+        const colorInput = html.find("#node-custom-color");
+        const hexInput = html.find("#node-custom-color-hex");
+
+        colorInput.on("input", function() {
+          hexInput.val($(this).val());
+        });
+
+        hexInput.on("change", function() {
+          let color = $(this).val().trim();
+          if (!color.startsWith("#")) color = "#" + color;
+          if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            colorInput.val(color);
+            $(this).val(color);
+          } else {
+            $(this).val(colorInput.val());
+          }
+        });
+
+        // Update slider value displays
+        html.find("#node-intensity").on("input", function() {
+          html.find(".slider-container").eq(0).find(".slider-value").text($(this).val() + "%");
+        });
+
+        html.find("#node-size").on("input", function() {
+          html.find(".slider-container").eq(1).find(".slider-value").text($(this).val() + "%");
+        });
+
+        // Update character counter
+        html.find("#node-note").on("input", function() {
+          html.find("#note-char-count").text($(this).val().length);
+        });
+      }
+    }).render(true);
   }
 
   /**
