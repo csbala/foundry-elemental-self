@@ -200,7 +200,7 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   pointer-events: none;
 }
 
-/* Individual element node (small circle) */
+/* Individual element node (small circle) - base styles */
 .element-node {
   position: absolute;
   width: 150px;
@@ -210,12 +210,26 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   border: 5px solid;
   transform: translate(-50%, -50%);
   transition: all 0.3s ease;
-  animation: node-pulse 2s ease-in-out infinite;
   pointer-events: all;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  cursor: pointer;
+}
+
+/* Dormant state - gray, no glow, no animation */
+.element-node-dormant {
+  border-color: rgba(150, 150, 150, 0.5) !important;
+  box-shadow: none !important;
+  animation: none;
+  filter: grayscale(0.7) brightness(0.6);
+}
+
+/* Awakened state - full color, glowing, pulsing (color applied via inline styles) */
+.element-node-awakened {
+  animation: node-pulse 2s ease-in-out infinite;
+  filter: none;
 }
 
 /* Drag over state for nodes */
@@ -233,6 +247,55 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   border-radius: 50%;
   cursor: move;
   pointer-events: all;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Bonus input inside node */
+.element-node-bonus {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 35px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  padding: 0;
+  z-index: 10;
+  pointer-events: all;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px currentColor;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.element-node-bonus:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 20px #4a90e2, inset 0 0 15px rgba(74, 144, 226, 0.3);
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.element-node-bonus:hover {
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.7), inset 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Remove spinner arrows from number input */
+.element-node-bonus::-webkit-inner-spin-button,
+.element-node-bonus::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.element-node-bonus[type="number"] {
+  -moz-appearance: textfield;
 }
 
 /* Pulse animation for nodes */

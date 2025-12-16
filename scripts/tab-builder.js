@@ -206,24 +206,126 @@ export async function setupElementInteractions(html, app) {
       // Check if this node has a feature assigned
       const assignedFeature = nodeAssignments[i];
       const featureImg = assignedFeature ? `<img src="${assignedFeature.img}" class="element-node-feature" data-node-index="${i}" draggable="true" title="${assignedFeature.name}"/>` : "";
+      const savedBonus = assignedFeature?.bonus || 0;
+      const isAwakened = assignedFeature?.awakened || false;
 
-      // Create small circle element
+      // Determine state class (dormant by default, awakened if activated)
+      const stateClass = isAwakened ? "element-node-awakened" : "element-node-dormant";
+
+      // Apply awakened styles inline if awakened
+      const awakenedStyles = isAwakened ? `border-color: ${currentColor} !important; box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor} !important;` : "";
+
+      // Create small circle element with bonus input
       const node = $(`
-        <div class="element-node" data-node-index="${i}" style="
+        <div class="element-node ${stateClass}" data-node-index="${i}" data-element-color="${currentColor}" style="
           left: ${x}%;
           top: ${y}%;
-          border-color: ${currentColor} !important;
-          box-shadow: 0 0 15px ${currentColor}, 0 0 30px ${currentColor} !important;
-        ">${featureImg}</div>
+          ${awakenedStyles}
+        ">
+          ${featureImg}
+          <input type="number" 
+                 class="element-node-bonus" 
+                 data-node-index="${i}" 
+                 value="${savedBonus}" 
+                 placeholder="0"
+                 min="0"
+                 title="Element Bonus">
+        </div>
       `);
 
       // Add drag-and-drop event handlers
       setupNodeDragDrop(node[0], i);
 
+      // Add bonus input event handlers
+      setupBonusInput(node[0], i);
+
+      // Add awakened state toggle handler
+      setupAwakenToggle(node[0], i);
+
       nodesContainer.append(node);
     }
 
     console.log(`${MODULE_NAME} | Updated element nodes: ${count}`);
+  }
+
+  /**
+   * Setup double-click handler to toggle awakened state
+   * @param {HTMLElement} nodeElement - The node DOM element
+   * @param {number} nodeIndex - The index of this node
+   */
+  function setupAwakenToggle(nodeElement, nodeIndex) {
+    nodeElement.addEventListener("dblclick", async (event) => {
+      // Don't toggle if clicking directly on the bonus input
+      if (event.target.classList.contains("element-node-bonus")) {
+        return;
+      }
+
+      try {
+        // Get current node data
+        const nodes = await getElementNodes(actor);
+        const nodeData = nodes[nodeIndex];
+
+        if (nodeData) {
+          // Toggle awakened state
+          const newAwakenedState = !nodeData.awakened;
+          nodeData.awakened = newAwakenedState;
+          await setElementNode(actor, nodeIndex, nodeData);
+
+          console.log(`${MODULE_NAME} | Node ${nodeIndex} ${newAwakenedState ? "awakened" : "dormant"}`);
+          ui.notifications.info(`Element ${newAwakenedState ? "awakened" : "set to dormant"}`);
+
+          // Refresh nodes to show new state
+          const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+          await updateElementNodes(currentCount);
+        }
+      } catch (error) {
+        console.error(`${MODULE_NAME} | Failed to toggle awakened state:`, error);
+      }
+    });
+  }
+
+  /**
+   * Setup event handlers for bonus input field
+   * @param {HTMLElement} nodeElement - The node DOM element
+   * @param {number} nodeIndex - The index of this node
+   */
+  function setupBonusInput(nodeElement, nodeIndex) {
+    const bonusInput = nodeElement.querySelector(".element-node-bonus");
+
+    if (!bonusInput) return;
+
+    // Save on change (when user finishes editing)
+    bonusInput.addEventListener("change", async (event) => {
+      const bonus = parseInt(event.target.value) || 0;
+      const validBonus = Math.max(0, bonus); // Ensure non-negative
+
+      event.target.value = validBonus;
+
+      try {
+        // Get current node data
+        const nodes = await getElementNodes(actor);
+        const nodeData = nodes[nodeIndex];
+
+        if (nodeData) {
+          // Update bonus
+          nodeData.bonus = validBonus;
+          await setElementNode(actor, nodeIndex, nodeData);
+          console.log(`${MODULE_NAME} | Saved bonus ${validBonus} to node ${nodeIndex}`);
+        }
+      } catch (error) {
+        console.error(`${MODULE_NAME} | Failed to save bonus:`, error);
+        ui.notifications.error("Failed to save element bonus");
+      }
+    });
+
+    // Prevent drag events from bubbling when interacting with input
+    bonusInput.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
+    });
+
+    bonusInput.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
   }
 
   /**
@@ -284,12 +386,19 @@ export async function setupElementInteractions(html, app) {
             console.log(`${MODULE_NAME} | Added feature ${item.name} to actor with ID ${actorItemId}`);
           }
 
+          // Get existing bonus and awakened state if node already has data
+          const existingNodes = await getElementNodes(actor);
+          const existingBonus = existingNodes[nodeIndex]?.bonus || 0;
+          const existingAwakened = existingNodes[nodeIndex]?.awakened || false;
+
           // Save feature assignment to this node with the ACTOR's item ID
           await setElementNode(actor, nodeIndex, {
             itemId: actorItemId, // Store the actor's item ID, not the source item ID
             img: item.img,
             name: item.name,
             uuid: `Actor.${actor.id}.Item.${actorItemId}`, // Create proper UUID for actor's item
+            bonus: existingBonus, // Preserve existing bonus
+            awakened: existingAwakened, // Preserve awakened state (false by default for new features)
           });
 
           console.log(`${MODULE_NAME} | Assigned feature ${item.name} to node ${nodeIndex}`);
@@ -371,8 +480,9 @@ export async function setupElementInteractions(html, app) {
         console.log(`${MODULE_NAME} | Removed feature ${featureData.name} from actor`);
       }
 
-      // Remove node assignment
+      // Remove node assignment (this also resets bonus to 0)
       await removeElementNode(actor, nodeIndex);
+      console.log(`${MODULE_NAME} | Reset bonus to 0 for node ${nodeIndex}`);
 
       ui.notifications.info(`Removed ${featureData.name} from element node`);
 
