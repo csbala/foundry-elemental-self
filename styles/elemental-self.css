@@ -346,7 +346,6 @@ form.dnd5e2:has(section.tab.elements.active) section.ability-scores {
   border-radius: 50%;
   pointer-events: none;
   opacity: 0;
-  filter: blur(1px);
 }
 
 /* Multiple particle animation variations */

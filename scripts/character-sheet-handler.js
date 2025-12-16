@@ -44,16 +44,13 @@ function findTabsNavigation(html) {
 function findContentContainer(html) {
   // Find the div with class "tab-body" that contains all the tab sections
   let content = html.find('div[data-container-id="tabs"].tab-body');
-  console.log(`${MODULE_NAME} | Looking for div[data-container-id="tabs"].tab-body, found: ${content.length}`);
 
   if (content.length > 0) {
-    console.log(`${MODULE_NAME} | Found tab container with ${content.children("section.tab").length} existing tabs`);
     return content;
   }
 
   // Fallback: just look for .tab-body
   content = html.find(".tab-body");
-  console.log(`${MODULE_NAME} | Fallback: Looking for .tab-body, found: ${content.length}`);
 
   if (content.length === 0) {
     console.warn(`${MODULE_NAME} | Could not find tab container!`);
@@ -70,18 +67,12 @@ function findContentContainer(html) {
  */
 export async function addElementsTab(app, htmlInput) {
   try {
-    console.log(`${MODULE_NAME} | addElementsTab called`);
-    console.log(`${MODULE_NAME} | Sheet mode: ${app?.options?.editable ? "EDITABLE" : "VIEW ONLY"}`);
-    console.log(`${MODULE_NAME} | App class: ${app?.constructor?.name}`);
-
     // Normalize HTML input to jQuery
     const html = normalizeHtml(htmlInput, app);
-    console.log(`${MODULE_NAME} | HTML normalized, length: ${html.length}`);
 
     // Get the previously active tab from our tracker
     const sheetId = app.id;
     const previousActiveTab = activeTabTracker.get(sheetId) || "details";
-    console.log(`${MODULE_NAME} | Previous active tab from tracker: ${previousActiveTab}`);
 
     // Remove any existing Elements tab to avoid duplicates
     html.find(`nav.tabs a[data-tab="${TAB_CONFIG.ID}"]`).remove();
@@ -93,7 +84,6 @@ export async function addElementsTab(app, htmlInput) {
       console.warn(`${MODULE_NAME} | Failed to find tabs navigation`);
       return;
     }
-    console.log(`${MODULE_NAME} | Found tabs navigation`);
 
     // Find content container
     const content = findContentContainer(html);
@@ -101,26 +91,21 @@ export async function addElementsTab(app, htmlInput) {
       console.warn(`${MODULE_NAME} | Failed to find content container`);
       return;
     }
-    console.log(`${MODULE_NAME} | Found content container`);
 
     // ALWAYS inject tab button and content (on every render)
     const tabButton = $(buildTabButton());
     tabsNav.append(tabButton);
-    console.log(`${MODULE_NAME} | Tab button added`);
 
     const tabContent = $(buildTabContent());
     content.append(tabContent);
-    console.log(`${MODULE_NAME} | Tab content added`);
 
     // Set up interactive elements (color picker, etc.)
     await setupElementInteractions(html, app);
-    console.log(`${MODULE_NAME} | Element interactions initialized`);
 
     // Track clicks on ALL tabs to know which one user selected
     html.find('nav.tabs a[data-action="tab"]').on("click", function () {
       const clickedTab = $(this).data("tab");
       activeTabTracker.set(sheetId, clickedTab);
-      console.log(`${MODULE_NAME} | User clicked tab: ${clickedTab}`);
     });
 
     // Try to bind with Foundry's tab system if available (optional - manual restoration works regardless)
@@ -129,7 +114,6 @@ export async function addElementsTab(app, htmlInput) {
         const primaryTabs = app._tabs.find((t) => t.group === "primary");
         if (primaryTabs) {
           primaryTabs.bind(html[0] || html);
-          console.log(`${MODULE_NAME} | Tabs re-bound with Foundry's system`);
           return true;
         }
       }
@@ -154,13 +138,10 @@ export async function addElementsTab(app, htmlInput) {
       if (activeButton.length > 0 && activeContent.length > 0) {
         activeButton.addClass("active");
         activeContent.addClass("active");
-        console.log(`${MODULE_NAME} | Manually restored active tab: ${previousActiveTab}`);
       } else {
         console.warn(`${MODULE_NAME} | Could not find tab elements for: ${previousActiveTab}`);
       }
     }, 100);
-
-    console.log(`${MODULE_NAME} | Tab injection complete`);
   } catch (error) {
     console.error(`${MODULE_NAME} | Error injecting tab:`, error);
   }
@@ -170,37 +151,30 @@ export async function addElementsTab(app, htmlInput) {
  * Register all character sheet related hooks
  */
 export function registerCharacterSheetHooks() {
-  console.log(`${MODULE_NAME} | Registering character sheet hooks`);
-
   // Primary hook for Application V2 (works for both edit and play mode)
   Hooks.on("render.dnd5e.applications.actor.CharacterActorSheet", (app, html) => {
-    console.log(`${MODULE_NAME} | Application V2 hook fired`);
     addElementsTab(app, html);
   });
 
   // Fallback hook for compatibility
   Hooks.on("renderCharacterActorSheet", (app, html) => {
-    console.log(`${MODULE_NAME} | Fallback hook fired`);
     addElementsTab(app, html);
   });
 
   // Additional hooks to catch re-renders and mode changes
   Hooks.on("renderActorSheet", (app, html) => {
-    console.log(`${MODULE_NAME} | Generic ActorSheet render hook fired`);
     if (app.constructor.name === "CharacterActorSheet") {
       addElementsTab(app, html);
     }
   });
 
   Hooks.on("renderActorSheet5eCharacter", (app, html) => {
-    console.log(`${MODULE_NAME} | Legacy ActorSheet5eCharacter hook fired`);
     addElementsTab(app, html);
   });
 
   // CATCH-ALL: Listen to ALL renders and filter for character sheets
   Hooks.on("render", (app, html) => {
     if (app.constructor.name === "CharacterActorSheet") {
-      console.log(`${MODULE_NAME} | Catch-all render hook fired for CharacterActorSheet`);
       addElementsTab(app, html);
     }
   });
@@ -208,8 +182,12 @@ export function registerCharacterSheetHooks() {
   // DON'T clean up tracker - keep it so we remember which tab was active
   // This allows reopening the sheet to restore the last active tab
   Hooks.on("closeCharacterActorSheet", (app) => {
-    console.log(`${MODULE_NAME} | Character sheet ${app.id} closed (keeping tracker)`);
+    // Clean up element node hooks to prevent memory leaks
+    if (app._elementNodeHooks) {
+      for (const hookId of app._elementNodeHooks) {
+        Hooks.off("deleteItem", hookId);
+      }
+      app._elementNodeHooks = [];
+    }
   });
-
-  console.log(`${MODULE_NAME} | Character sheet hooks registered`);
 }

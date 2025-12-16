@@ -168,8 +168,9 @@ function createParticle(container, color, index) {
  */
 function updateParticleColors(container, newColor) {
   container.find(".particle").each(function () {
-    const size = parseFloat($(this).css("width"));
-    $(this).css({
+    const $particle = $(this); // Cache jQuery selector
+    const size = parseFloat($particle.css("width"));
+    $particle.css({
       background: newColor,
       boxShadow: `0 0 ${size * 2}px ${newColor}, 0 0 ${size * 4}px ${newColor}`,
     });
@@ -219,13 +220,10 @@ export async function setupElementInteractions(html, app) {
   const hookId = Hooks.on("deleteItem", async (item, options, userId) => {
     // Only process if this is our actor's item
     if (item.parent?.id === actor.id) {
-      console.log(`${MODULE_NAME} | Item ${item.name} deleted from actor, cleaning node assignments`);
-
       // Find which node had this item
       const nodes = await getElementNodes(actor);
       for (const [nodeIndex, nodeData] of Object.entries(nodes)) {
         if (nodeData.itemId === item.id) {
-          console.log(`${MODULE_NAME} | Removing item ${item.name} from node ${nodeIndex}`);
           await removeElementNode(actor, parseInt(nodeIndex));
 
           // Refresh the nodes display if this sheet is still open
@@ -267,7 +265,6 @@ export async function setupElementInteractions(html, app) {
       if (nodeData && nodeData.itemId) {
         const item = actor.items.get(nodeData.itemId);
         if (!item) {
-          console.log(`${MODULE_NAME} | Item ${nodeData.name} (${nodeData.itemId}) no longer exists, removing from node ${nodeIndex}`);
           delete nodeAssignments[nodeIndex];
           needsCleanup = true;
         }
@@ -330,8 +327,6 @@ export async function setupElementInteractions(html, app) {
 
       nodesContainer.append(node);
     }
-
-    console.log(`${MODULE_NAME} | Updated element nodes: ${count}`);
   }
 
   /**
@@ -357,7 +352,6 @@ export async function setupElementInteractions(html, app) {
           nodeData.awakened = newAwakenedState;
           await setElementNode(actor, nodeIndex, nodeData);
 
-          console.log(`${MODULE_NAME} | Node ${nodeIndex} ${newAwakenedState ? "awakened" : "dormant"}`);
           ui.notifications.info(`Element ${newAwakenedState ? "awakened" : "set to dormant"}`);
 
           // Refresh nodes to show new state
@@ -396,7 +390,6 @@ export async function setupElementInteractions(html, app) {
           // Update bonus
           nodeData.bonus = validBonus;
           await setElementNode(actor, nodeIndex, nodeData);
-          console.log(`${MODULE_NAME} | Saved bonus ${validBonus} to node ${nodeIndex}`);
         }
       } catch (error) {
         console.error(`${MODULE_NAME} | Failed to save bonus:`, error);
@@ -464,12 +457,10 @@ export async function setupElementInteractions(html, app) {
 
           if (existingItem) {
             actorItemId = existingItem.id;
-            console.log(`${MODULE_NAME} | Feature ${item.name} already on actor, using existing ID ${actorItemId}`);
           } else {
             // Create returns array of created items
             const createdItems = await actor.createEmbeddedDocuments("Item", [item.toObject()]);
             actorItemId = createdItems[0].id;
-            console.log(`${MODULE_NAME} | Added feature ${item.name} to actor with ID ${actorItemId}`);
           }
 
           // Get existing bonus and awakened state if node already has data
@@ -487,7 +478,6 @@ export async function setupElementInteractions(html, app) {
             awakened: existingAwakened, // Preserve awakened state (false by default for new features)
           });
 
-          console.log(`${MODULE_NAME} | Assigned feature ${item.name} to node ${nodeIndex}`);
           ui.notifications.info(`Assigned ${item.name} to element node`);
 
           // Refresh nodes
@@ -537,7 +527,6 @@ export async function setupElementInteractions(html, app) {
           const isOutside = x < rect.left || x > rect.right || y < rect.top || y > rect.bottom;
 
           if (isOutside) {
-            console.log(`${MODULE_NAME} | Dragged outside node ${nodeIndex}, removing feature`);
             await removeFeatureFromNode(nodeIndex);
           }
         }
@@ -563,12 +552,10 @@ export async function setupElementInteractions(html, app) {
       const item = actor.items.get(featureData.itemId);
       if (item) {
         await item.delete();
-        console.log(`${MODULE_NAME} | Removed feature ${featureData.name} from actor`);
       }
 
       // Remove node assignment (this also resets bonus to 0)
       await removeElementNode(actor, nodeIndex);
-      console.log(`${MODULE_NAME} | Reset bonus to 0 for node ${nodeIndex}`);
 
       ui.notifications.info(`Removed ${featureData.name} from element node`);
 
@@ -598,7 +585,6 @@ export async function setupElementInteractions(html, app) {
 
     try {
       await setNumberOfElements(actor, validCount);
-      console.log(`${MODULE_NAME} | Saved number of elements ${validCount} to actor ${actor.name}`);
     } catch (error) {
       console.error(`${MODULE_NAME} | Failed to save number of elements:`, error);
       ui.notifications.error("Failed to save number of elements");
@@ -611,7 +597,6 @@ export async function setupElementInteractions(html, app) {
     savedCount = await getNumberOfElements(actor);
     savedCount = Math.max(0, Math.min(10, savedCount)); // Clamp between 0 and 10
     numberOfElementsInput.val(savedCount);
-    console.log(`${MODULE_NAME} | Loaded number of elements ${savedCount} from actor ${actor.name}`);
   } catch (error) {
     console.error(`${MODULE_NAME} | Failed to load number of elements:`, error);
   }
@@ -653,25 +638,23 @@ export async function setupElementInteractions(html, app) {
     html.find(".elements-display::before").css({
       background: `radial-gradient(circle, rgba(${r}, ${g}, ${b}, 0.2) 0%, rgba(${r}, ${g}, ${b}, 0.05) 50%, transparent 70%)`,
     });
-
-    console.log(`${MODULE_NAME} | Circle color updated to ${hexColor}`);
   }
 
   // Color picker change event (with live preview and save on change)
-  colorPicker.on("input", async function () {
+  colorPicker.on("input", function () {
     const color = $(this).val();
     colorHex.val(color);
     updateCircleColor(color);
-    // Update node colors in real-time
-    const currentCount = parseInt(numberOfElementsInput.val()) || 0;
-    await updateElementNodes(currentCount);
+    // Note: Node colors update on save (change event), not while dragging picker
   });
 
   colorPicker.on("change", async function () {
     const color = $(this).val();
     try {
       await setElementColor(actor, color);
-      console.log(`${MODULE_NAME} | Saved color ${color} to actor ${actor.name}`);
+      // Update node colors after save
+      const currentCount = parseInt(numberOfElementsInput.val()) || 0;
+      await updateElementNodes(currentCount);
     } catch (error) {
       console.error(`${MODULE_NAME} | Failed to save color:`, error);
       ui.notifications.error("Failed to save element color");
@@ -699,7 +682,6 @@ export async function setupElementInteractions(html, app) {
       // Save to actor
       try {
         await setElementColor(actor, color);
-        console.log(`${MODULE_NAME} | Saved color ${color} to actor ${actor.name}`);
       } catch (error) {
         console.error(`${MODULE_NAME} | Failed to save color:`, error);
         ui.notifications.error("Failed to save element color");
@@ -717,7 +699,6 @@ export async function setupElementInteractions(html, app) {
     colorPicker.val(savedColor);
     colorHex.val(savedColor);
     updateCircleColor(savedColor);
-    console.log(`${MODULE_NAME} | Loaded color ${savedColor} from actor ${actor.name}`);
   } catch (error) {
     console.error(`${MODULE_NAME} | Failed to load saved color:`, error);
     // Fall back to default
@@ -843,7 +824,6 @@ export async function setupElementInteractions(html, app) {
 
     try {
       await setBurnLevel(actor, clampedLevel);
-      console.log(`${MODULE_NAME} | Saved burn level ${clampedLevel} to actor ${actor.name}`);
     } catch (error) {
       console.error(`${MODULE_NAME} | Failed to save burn level:`, error);
       ui.notifications.error("Failed to save burn level");
@@ -855,7 +835,6 @@ export async function setupElementInteractions(html, app) {
     const savedBurnLevel = await getBurnLevel(actor);
     burnLevelInput.val(savedBurnLevel);
     updateBurnLevelVisuals(savedBurnLevel);
-    console.log(`${MODULE_NAME} | Loaded burn level ${savedBurnLevel} from actor ${actor.name}`);
   } catch (error) {
     console.error(`${MODULE_NAME} | Failed to load burn level:`, error);
   }
