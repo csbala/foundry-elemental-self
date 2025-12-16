@@ -29,7 +29,28 @@ export function buildTabContent() {
     <section class="tab elements" data-group="primary" data-tab="${TAB_CONFIG.ID}">
       <div class="elements-container">
         <div class="elements-controls">
-          <h3 class="section-title">Elements</h3>
+          <div class="elements-header">
+            <h3 class="section-title">Elements</h3>
+            <button class="element-info-icon" type="button" data-tooltip="Quick Reference" aria-label="Element System Quick Reference">
+              <i class="fas fa-info-circle"></i>
+            </button>
+          </div>
+          
+          <div class="element-quick-ref" style="display: none;">
+            <div class="quick-ref-content">
+              <h4>Element System Quick Reference</h4>
+              <ul>
+                <li><strong>When to Use:</strong> Any roll during your turn (attacks, skills, saves)</li>
+                <li><strong>Not Usable:</strong> Reactions (unless reaction is on your turn)</li>
+                <li><strong>Declare:</strong> After rolling (can decide based on result)</li>
+                <li><strong>Stacking:</strong> Multiple Elements can be used on the same roll</li>
+                <li><strong>Per Turn:</strong> Each awakened Element provides 1d6 (+ bonus)</li>
+              </ul>
+              <a href="https://docs.google.com/document/d/1YHqrxfUAKVTldjLAZ7jC0qrXbj3PEGgYy8a36KJ1AAg/edit?usp=sharing" target="_blank" class="quick-ref-link">
+                <i class="fas fa-external-link-alt"></i> Full System Rules (PDF)
+              </a>
+            </div>
+          </div>
           
           <div class="form-group">
             <label for="element-number">Number of Elements</label>
@@ -215,6 +236,23 @@ export async function setupElementInteractions(html, app) {
 
   // Initialize particle system
   initializeParticles(particlesContainer, colorPicker.val());
+
+  // Set up quick reference toggle
+  const infoIcon = html.find(".element-info-icon");
+  const quickRef = html.find(".element-quick-ref");
+  
+  infoIcon.on("click", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    quickRef.slideToggle(200);
+  });
+
+  // Close quick ref when clicking outside
+  $(document).on("click.elementQuickRef", function(event) {
+    if (!$(event.target).closest(".element-info-icon, .element-quick-ref").length) {
+      quickRef.slideUp(200);
+    }
+  });
 
   // Set up hook to clean node assignments when items are deleted
   const hookId = Hooks.on("deleteItem", async (item, options, userId) => {
@@ -637,6 +675,15 @@ export async function setupElementInteractions(html, app) {
     // Update ambient glow background
     html.find(".elements-display::before").css({
       background: `radial-gradient(circle, rgba(${r}, ${g}, ${b}, 0.2) 0%, rgba(${r}, ${g}, ${b}, 0.05) 50%, transparent 70%)`,
+    });
+
+    // Update info icon and quick reference colors
+    infoIcon.css("color", hexColor);
+    quickRef.css("border-color", hexColor);
+    quickRef.find("h4").css("color", hexColor);
+    quickRef.find("li:before").css("color", hexColor);
+    quickRef.find(".quick-ref-link").css({
+      "background": `linear-gradient(135deg, ${hexColor}, rgba(${r}, ${g}, ${b}, 0.7))`,
     });
   }
 
